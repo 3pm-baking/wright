@@ -1,0 +1,21 @@
+site_name: wright
+site_description: Production planning and cost calculation library
+repo_url: https://github.com/3pm-baking/wright
+theme:
+  name: material
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            inherited_members: true
+
+nav:
+  - Home: index.md
+  - Quickstart: guides/quickstart.md
+  - Customization: guides/customization.md
+  - API Reference: api.md

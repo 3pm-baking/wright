@@ -1,0 +1,28 @@
+name: Overnight Oats
+prep_time: 5
+cook_time: 0
+servings: 1
+
+components:
+  - name: Base Oats
+    ingredients:
+      - name: Rolled Oats
+        quantity: 50
+        unit: g
+      - name: Greek Yogurt
+        quantity: 100
+        unit: g
+      - name: Honey
+        quantity: 1
+        unit: tbsp
+      - name: Chia Seeds
+        quantity: 1
+        unit: tbsp
+      - name: Almond Milk
+        quantity: 120
+        unit: ml
+
+instructions:
+  - Combine all ingredients in a jar
+  - Stir well and refrigerate overnight
+  - Top with fresh fruit before eating

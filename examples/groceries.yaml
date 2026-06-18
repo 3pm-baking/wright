@@ -1,0 +1,127 @@
+# Example grocery price data.
+# In a real application, these would come from a database, API, or files.
+
+store: Farmers Market
+purchases:
+  - name: Quinoa
+    brand: Store Brand
+    tags: organic
+    quantity: 500
+    unit: g
+    price: 4.99
+    purchased_date: 2026-01-15
+    store: Farmers Market
+
+  - name: Sweet Potato
+    quantity: 1
+    unit: each
+    price: 1.25
+    purchased_date: 2026-01-10
+    store: Farmers Market
+
+  - name: Olive Oil
+    brand: Generic
+    quantity: 500
+    unit: ml
+    price: 6.99
+    purchased_date: 2026-01-08
+    store: Farmers Market
+
+  - name: Rolled Oats
+    brand: Store Brand
+    quantity: 1000
+    unit: g
+    price: 3.49
+    purchased_date: 2026-01-12
+    store: Farmers Market
+
+  - name: Greek Yogurt
+    quantity: 500
+    unit: g
+    price: 4.49
+    purchased_date: 2026-01-14
+    store: Farmers Market
+
+  - name: Spinach
+    quantity: 150
+    unit: g
+    price: 3.99
+    purchased_date: 2026-01-13
+    store: Farmers Market
+
+  - name: Banana
+    quantity: 1
+    unit: each
+    price: 0.29
+    purchased_date: 2026-01-16
+    store: Farmers Market
+
+  - name: Protein Powder
+    brand: FitBrand
+    quantity: 500
+    unit: g
+    price: 24.99
+    purchased_date: 2026-01-05
+    store: Farmers Market
+
+  - name: Almond Milk
+    brand: Store Brand
+    quantity: 946
+    unit: ml
+    price: 3.29
+    purchased_date: 2026-01-11
+    store: Farmers Market
+
+  - name: Tahini
+    quantity: 450
+    unit: g
+    price: 5.99
+    purchased_date: 2026-01-09
+    store: Farmers Market
+
+  - name: Lemon Juice
+    brand: Generic
+    quantity: 473
+    unit: ml
+    price: 2.49
+    purchased_date: 2026-01-07
+    store: Farmers Market
+
+  - name: Garlic
+    quantity: 1
+    unit: each
+    price: 0.50
+    purchased_date: 2026-01-10
+    store: Farmers Market
+
+  - name: Honey
+    quantity: 340
+    unit: g
+    price: 5.99
+    purchased_date: 2026-01-06
+    store: Farmers Market
+
+  - name: Chia Seeds
+    brand: Store Brand
+    quantity: 200
+    unit: g
+    price: 4.99
+    purchased_date: 2026-01-04
+    store: Farmers Market
+
+  - name: Salt
+    brand: Generic
+    tags: sea salt
+    quantity: 500
+    unit: g
+    price: 2.99
+    purchased_date: 2026-01-03
+    store: Farmers Market
+
+  - name: Vegetable Broth
+    brand: Generic
+    quantity: 946
+    unit: ml
+    price: 2.99
+    purchased_date: 2026-01-02
+    store: Farmers Market
