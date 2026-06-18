@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://wright.germanbakingasheville.com">
-    <img src="https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/wright-logo.png" width="225" alt="wright">
+    <img src="https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/wright-logo.png" width="180" alt="wright">
   </a>
 </p>
 
