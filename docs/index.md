@@ -1,64 +1,113 @@
-# wright
+---
+title: wright
+---
 
-Pure Python library for production planning, cost calculation, unit conversion,
-allergen detection, nutrition analysis, supply tracking, and shopping list
-aggregation.
+<p align="center">
+  <a href="https://wright.germanbakingasheville.com">
+    <img src="assets/wright-logo.png" width="225" alt="wright">
+  </a>
+</p>
 
-Data-source agnostic — populate models from YAML, JSON, a database, or pure Python.
-Subclass to add domain-specific metadata.
+Pure Python library for production planning, cost calculation, shopping list
+generation, allergen detection, nutrition analysis, and supply tracking.
+
+Data-source agnostic. No I/O inside the core — models are plain Pydantic, the
+`PurchasedItem` protocol accepts anything. Subclass to add your own fields.
 
 ```bash
 pip install wright
 ```
 
-## What it does
+## Recipes and ingredients
 
-| Module | Purpose |
-|--------|---------|
-| `models` | Core data models: `BaseIngredient`, `BaseRecipe`, `RecipeComponent`, `ServingRange`, `NutritionInfo`, `CategoryRule` — plus the `PurchasedItem` protocol |
-| `costing` | Recursive ingredient cost calculation with unit conversion, density fallback, `product_ref` sub-recipe resolution, and top-N cost driver analysis |
-| `matching` | Pluggable ingredient-to-purchase matching with composable pickers: `cheapest_picker`, `recent_picker`, `pinned_picker`, `chain()` |
-| `planning` | Shopping list generation from production runs, cost enrichment, menu analysis, volume normalization |
-| `pricing` | Margin and multiplier pricing functions |
-| `allergens` | Allergen detection and dietary badge derivation — keyword-based with override callbacks |
-| `macros` | Per-serving nutrition calculation via a central `NutritionRegistry`, with `product_ref` support |
-| `supply` | Stock tracking: `supply_add`, `supply_deduct`, `subtract_supply` with unit-aware operations |
-| `session` | `ProductionRun` and `ProductionItem` for multi-batch planning |
-| `loader` | Optional YAML helpers (`load_base_recipe`, `load_purchases`, `load_density_data`) |
-| `errors` | Typed exceptions: `IngredientNotFoundError`, `UnitConversionError`, `RecipeCostErrors` |
-| `units` | Pint registry with common units and unit classification frozensets |
+```python
+from wright import Recipe, Ingredient, RecipeComponent
 
-## Quick example
+cake = Recipe(
+    name="Lemon Cake",
+    components=[RecipeComponent(name="Batter", ingredients=[
+        Ingredient(name="Flour", quantity=300, unit="g"),
+        Ingredient(name="Butter", quantity=200, unit="g"),
+    ])],
+    prep_time=30, cook_time=45,
+    servings=12,
+)
+
+double = cake * 2   # scale a recipe with *
+```
+
+## Beyond food — Material and Component
+
+`Material` and `Component` are the domain-agnostic base classes behind
+`Ingredient` and `RecipeComponent`.  Use them directly for non-food domains:
+
+```python
+from wright import Material, Component
+
+# Construction: a deck's bill of materials
+framing = Component(name="Deck Framing", materials=[
+    Material(name="2x6 Pressure-Treated", quantity=24, unit="ft", require_tags=["#2"]),
+    Material(name="3\" Deck Screws", quantity=200, unit="each"),
+])
+footings = Component(name="Footings", materials=[
+    Material(name="Concrete Mix", quantity=6, unit="bag", equivalent_quantity=60, equivalent_unit="lb"),
+])
+```
+
+Same `scale()`, `__mul__`, and supply list pipeline works across all domains.
+
+## Costing
 
 ```python
 from decimal import Decimal
-from wright import BaseRecipe, BaseIngredient, RecipeComponent, SimplePurchase
-from wright import calculate_recipe_cost
-
-recipe = BaseRecipe(
-    name="Overnight Oats",
-    components=[RecipeComponent(name="Base", ingredients=[
-        BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-        BaseIngredient(name="Greek Yogurt", quantity=100, unit="g"),
-    ])],
-    prep_time=5, cook_time=0, servings=1,
-)
+from wright import Purchase, calculate_recipe_cost
 
 groceries = [
-    SimplePurchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
-    SimplePurchase(name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.99")),
+    Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.99")),
+    Purchase(name="Butter", quantity=500, unit="g", price=Decimal("5.49")),
 ]
 
-cost = calculate_recipe_cost(recipe, groceries)
-print(f"Total: ${cost.total_cost_range.midpoint:.2f}")
+cost = calculate_recipe_cost(cake, groceries)
+print(cost.cost_per_serving_range.midpoint)
 ```
 
-## Design principles
+## Planning a production run
 
-- **No I/O.** Core functions take data in, return data out. No files, no databases, no network.
-- **Protocol-based.** `PurchasedItem` is a protocol — any class with the right attributes works.
-- **Pluggable.** Matchers, pickers, converters, normalizers, and callbacks are injected at every decision point.
-- **Subclass-friendly.** Pydantic models are designed for inheritance. Add domain fields without monkey-patching.
+```python
+from datetime import date
+from wright import ProductionRun, ProductionItem, generate_shopping_list
+
+session = ProductionRun(
+    date=date(2026, 6, 20),
+    production=[ProductionItem(recipe="Lemon Cake", quantity=3)],
+    target_dates=[date(2026, 6, 20)],
+)
+
+shopping = generate_shopping_list(session, {"Lemon Cake": cake})
+```
+
+## Allergens, nutrition, supply, pricing
+
+```python
+from wright import detect_dietary_properties, calculate_recipe_macros
+from wright import Stock, SupplyItem
+from wright import margin_price
+
+badges = detect_dietary_properties(cake)
+macros = calculate_recipe_macros(cake, nutrition_registry=registry)
+stock = Stock([SupplyItem(name="Flour", quantity=2000, unit="g")])
+price = margin_price(Decimal("2.00"), 0.67)
+```
+
+## Design
+
+- **No I/O.** Functions take data in, return data out.
+- **Protocol-based.** `PurchasedItem` accepts any class with the right attributes.
+- **Pluggable.** Every decision point accepts an injection.
+- **Subclass-friendly.** `Material` / `Ingredient` inheritance chain lets you
+  add domain fields (construction grades, food vendor info) without monkey-patching.
+- **Multi-domain.** Same pipeline for cookies, decks, beer recipes, or assembly
+  lines — just swap the model subclass and category rules.
 
 ## Requirements
 
@@ -67,3 +116,14 @@ Python 3.11+. Dependencies: `pydantic>=2.8.2`, `pint>=0.25`, `pyyaml>=6.0.3`.
 ## License
 
 MIT. See [LICENSE](https://github.com/3pm-baking/wright/blob/main/LICENSE).
+
+<br>
+
+<p align="center">
+  <img src="assets/logo.png" width="200" alt="3pm German Baking">
+</p>
+<p align="center">
+  <a href="https://github.com/3pm-baking/wright">wright</a> is created and maintained by
+  <a href="https://germanbakingasheville.com">3pm German Baking, LLC</a>
+  a farmers market bakery in Asheville, NC.
+</p>

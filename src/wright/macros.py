@@ -5,38 +5,56 @@ Recursive ``product_ref`` support mirrors the costing module.
 
 from __future__ import annotations
 
-from typing import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 
-from wright.costing import convert_with_density, ingredient_to_grams
+from wright.costing import convert_ingredient_to_grams, convert_with_density
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    FoodRecord,
+    Ingredient,
     MacroPerServing,
     NutritionInfo,
     NutritionRegistry,
+    Recipe,
     RecipeMacros,
     Servings,
 )
 
 # ---------------------------------------------------------------------------
-# Gram conversion (delegates to costing.ingredient_to_grams, adds density)
+# Registry normalization
+# ---------------------------------------------------------------------------
+
+
+def _ensure_nutrition_registry(
+    source: Iterable[FoodRecord] | NutritionRegistry,
+) -> NutritionRegistry:
+    """Normalise a nutrition source to a ``{name: NutritionInfo}`` mapping.
+
+    ``FoodRecord`` instances are keyed by their ``.ingredient`` field.
+    """
+    if isinstance(source, Mapping):
+        return source  # type: ignore[return-value]  # ty:ignore[invalid-return-type]
+    return {r.ingredient: r.nutrition for r in source}
+
+
+# ---------------------------------------------------------------------------
+# Gram conversion (delegates to costing.convert_ingredient_to_grams, adds density)
 # ---------------------------------------------------------------------------
 
 
 def _ingredient_grams(
-    ingredient: BaseIngredient,
+    ingredient: Ingredient,
     density_data: dict | None = None,
 ) -> float:
     """Return gram quantity for an ingredient, or ``0.0`` if not determinable.
 
     Delegates packet-unit and weight-unit resolution to
-    :func:`~wright.costing.ingredient_to_grams`, then falls back to
+    :func:`~wright.costing.convert_ingredient_to_grams`, then falls back to
     density-based volume → weight conversion.
     """
     density_data = density_data or {}
 
     # Let costing handle packets and direct weight conversion
-    grams = ingredient_to_grams(ingredient, raise_on_error=False)
+    grams = convert_ingredient_to_grams(ingredient, raise_on_error=False)
     if grams > 0:
         return grams
 
@@ -60,11 +78,11 @@ def _ingredient_grams(
 
 
 def calculate_recipe_macros(
-    recipe: BaseRecipe,
+    recipe: Recipe,
     *,
-    nutrition_registry: NutritionRegistry | None = None,
+    nutrition_registry: Iterable[FoodRecord] | NutritionRegistry | None = None,
     ingredient_nutrition_lookup: Callable[[str], NutritionInfo | None] | None = None,
-    recipe_index: Mapping[str, BaseRecipe] | None = None,
+    recipe_index: Mapping[str, Recipe] | None = None,
     density_data: dict | None = None,
 ) -> RecipeMacros:
     """Calculate total and per-serving macros for a recipe.
@@ -75,21 +93,21 @@ def calculate_recipe_macros(
        via *recipe_index*) and scale its total macros by the ingredient's
        gram quantity relative to the sub-recipe's ``net_weight_grams``.
     2. **nutrition_registry** — lookup the ingredient's name in the
-       provided registry (a ``NutritionRegistry`` mapping).
+       provided data (``NutritionRegistry`` mapping or ``Iterable[FoodRecord]``).
     3. **ingredient_nutrition_lookup** — call the provided callback with
        the ingredient name; if it returns ``NutritionInfo``, use it.
     4. **fallback** — skip the ingredient (zero contribution).
 
     Args:
         recipe: The recipe to analyze.
-        nutrition_registry: Optional mapping of ingredient name →
-            ``NutritionInfo`` per 100g.  The primary data source
-            (loaded from YAML, USDA, etc.).
-        ingredient_nutrition_lookup: Optional callback ``(name) -> NutritionInfo | None``
-            for looking up nutrition data by ingredient name from an external
-            source (e.g., USDA API, local database).  Acts as a secondary
-            fallback when the registry has no entry.
-        recipe_index: Optional mapping of recipe name → ``BaseRecipe`` for
+        nutrition_registry: ``Iterable[FoodRecord]`` (keyed by ``.ingredient``)
+            or ``NutritionRegistry`` mapping.  The primary data source.
+        ingredient_nutrition_lookup: Optional callback
+            ``(name) -> NutritionInfo | None`` for looking up nutrition data
+            by ingredient name from an external source (e.g., USDA API, local
+            database).  Acts as a secondary fallback when the registry has no
+            entry.
+        recipe_index: Optional mapping of recipe name → ``Recipe`` for
             resolving ``product_ref`` references.
 
     Returns:
@@ -98,7 +116,7 @@ def calculate_recipe_macros(
     Raises:
         RecipeCycleError: If a cycle is detected in ``product_ref`` references.
     """
-    nutrition_registry = nutrition_registry or {}
+    reg = _ensure_nutrition_registry(nutrition_registry or {})
     recipe_index = recipe_index or {}
     density_data = density_data or {}
 
@@ -118,7 +136,7 @@ def calculate_recipe_macros(
 
         protein, carbs, fat, fiber, kcal = _macro_contribution(
             ingredient,
-            nutrition_registry=nutrition_registry,
+            nutrition_registry=reg,
             recipe_index=recipe_index,
             ingredient_nutrition_lookup=ingredient_nutrition_lookup,
             density_data=density_data,
@@ -169,7 +187,7 @@ def _pick_servings(servings: Servings | None) -> int | None:
         return None
     if isinstance(servings, int):
         return servings
-    return servings.midpoint
+    return int(servings.midpoint)  # type: ignore[union-attr]
 
 
 # ---------------------------------------------------------------------------
@@ -178,10 +196,10 @@ def _pick_servings(servings: Servings | None) -> int | None:
 
 
 def _macro_contribution(
-    ingredient: BaseIngredient,
+    ingredient: Ingredient,
     *,
     nutrition_registry: NutritionRegistry,
-    recipe_index: Mapping[str, BaseRecipe],
+    recipe_index: Mapping[str, Recipe],
     ingredient_nutrition_lookup: Callable[[str], NutritionInfo | None] | None,
     density_data: dict,
     visited: frozenset[str],

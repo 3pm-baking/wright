@@ -16,28 +16,28 @@ from wright.costing import (
     calculate_ingredient_cost,
     calculate_ingredient_cost_range,
     calculate_recipe_cost,
+    convert_ingredient_to_grams,
     convert_with_density,
     get_top_cost_drivers,
-    ingredient_to_grams,
 )
 from wright.errors import (
-    PurchaseLoadError,
     IngredientNotFoundError,
+    PurchaseLoadError,
     RecipeCoreError,
     RecipeCostErrors,
     RecipeLoadError,
     UnitConversionError,
 )
-from wright.macros import calculate_recipe_macros
 from wright.loader import (
     list_recipe_files,
     load_base_recipe,
     load_density_data,
-    load_purchases,
     load_nutrition_registry,
+    load_purchases,
     load_supplies,
     load_yaml_file,
 )
+from wright.macros import calculate_recipe_macros
 from wright.matching import (
     ItemMatcher,
     ItemPicker,
@@ -53,45 +53,42 @@ from wright.matching import (
 )
 from wright.models import (
     DEFAULT_CATEGORY_RULES,
+    Assembly,
     BaseIngredient,
     BaseRecipe,
     CategoryRule,
+    Component,
     FoodRecord,
-    PurchasedItem,
+    Ingredient,
     IngredientCost,
     MacroPerServing,
+    Material,
     NutritionInfo,
     PriceRange,
+    Purchase,
+    PurchasedItem,
+    Recipe,
     RecipeComponent,
     RecipeCost,
     RecipeMacros,
     ServingRange,
     Servings,
-    SimplePurchase,
     categorize_ingredient,
-)
-from wright.supply import (
-    Supply,
-    SupplyItem,
-    subtract_supply,
-    supply_add,
-    supply_deduct,
 )
 from wright.planning import (
     IngredientGroup,
     MenuAnalysis,
-    ShoppingItem,
     ShoppingItemWithCost,
     ShoppingList,
-    add_costs_to_shopping_list,
     analyze_menu,
-    cost_items,
+    calculate_item_costs,
+    calculate_shopping_list_cost,
     estimate_total_items,
     format_quantity,
     generate_shopping_list,
     group_shopping_items,
-    normalize_volume_for_grocery,
     normalize_volume_to_ml,
+    normalize_volume_us,
 )
 from wright.pricing import (
     margin_price,
@@ -101,8 +98,11 @@ from wright.pricing import (
 from wright.session import (
     ProductionItem,
     ProductionRun,
-    combine_production_runs,
-    recipe_name_to_filename,
+    convert_recipe_name_to_filename,
+)
+from wright.supply import (
+    Stock,
+    SupplyItem,
 )
 from wright.units import (
     DISCRETE_UNITS,
@@ -117,8 +117,11 @@ from wright.units import (
 
 __all__ = [
     # Models
-    "BaseIngredient",
-    "BaseRecipe",
+    "Assembly",
+    "Material",
+    "Ingredient",
+    "Component",
+    "Recipe",
     "CategoryRule",
     "DEFAULT_CATEGORY_RULES",
     "FoodRecord",
@@ -129,7 +132,9 @@ __all__ = [
     "RecipeCost",
     "ServingRange",
     "Servings",
-    "SimplePurchase",
+    "Purchase",
+    "BaseIngredient",
+    "BaseRecipe",
     "categorize_ingredient",
     # Errors
     "PurchaseLoadError",
@@ -165,7 +170,7 @@ __all__ = [
     "calculate_recipe_cost",
     "convert_with_density",
     "get_top_cost_drivers",
-    "ingredient_to_grams",
+    "convert_ingredient_to_grams",
     # Pricing
     "margin_price",
     "multiplier_price",
@@ -186,22 +191,20 @@ __all__ = [
     # Session
     "ProductionItem",
     "ProductionRun",
-    "combine_production_runs",
-    "recipe_name_to_filename",
+    "convert_recipe_name_to_filename",
     # Planning
     "IngredientGroup",
     "MenuAnalysis",
-    "ShoppingItem",
     "ShoppingItemWithCost",
     "ShoppingList",
-    "add_costs_to_shopping_list",
+    "calculate_shopping_list_cost",
     "analyze_menu",
-    "cost_items",
+    "calculate_item_costs",
     "estimate_total_items",
     "format_quantity",
     "generate_shopping_list",
     "group_shopping_items",
-    "normalize_volume_for_grocery",
+    "normalize_volume_us",
     "normalize_volume_to_ml",
     # Loader (optional YAML convenience)
     "list_recipe_files",
@@ -212,9 +215,6 @@ __all__ = [
     "load_supplies",
     "load_yaml_file",
     # Supply
-    "Supply",
+    "Stock",
     "SupplyItem",
-    "supply_add",
-    "supply_deduct",
-    "subtract_supply",
 ]

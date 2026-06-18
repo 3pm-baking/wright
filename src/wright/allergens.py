@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from wright.models import BaseIngredient, BaseRecipe
+from wright.models import Ingredient, Recipe
 
 # ---------------------------------------------------------------------------
 # Badge configuration
@@ -120,10 +120,10 @@ def _is_vegan(name_lower: str) -> bool:
 
 
 def detect_allergens(
-    recipe: BaseRecipe,
+    recipe: Recipe,
     allergy_map: dict[str, str],
     *,
-    ingredient_properties: Callable[[BaseIngredient], frozenset[str]] | None = None,
+    ingredient_properties: Callable[[Ingredient], frozenset[str]] | None = None,
 ) -> list[str]:
     """Detect allergens present in a recipe's ingredients.
 
@@ -193,7 +193,7 @@ def detect_allergens_from_names(
     """Detect allergens from a plain list of ingredient name strings.
 
     Useful when working with flat ingredient lists rather than structured
-    ``BaseRecipe`` objects.
+    ``Recipe`` objects.
 
     Args:
         ingredient_names: List of ingredient name strings.
@@ -269,9 +269,9 @@ def _resolve_badges(
 
 
 def detect_dietary_properties(
-    recipe: BaseRecipe,
+    recipe: Recipe,
     *,
-    ingredient_properties: Callable[[BaseIngredient], frozenset[str]] | None = None,
+    ingredient_properties: Callable[[Ingredient], frozenset[str]] | None = None,
     non_vegan_keys: frozenset[str] | None = None,
     dairy_keys: frozenset[str] | None = None,
     gluten_keys: frozenset[str] | None = None,
@@ -356,11 +356,12 @@ def detect_dietary_properties(
                     break
 
         # Dairy-free
-        if callback_props and "dairy-free" in callback_props:
-            pass
-        elif callback_props:
-            pass
-        elif _is_vegan(name_lower):
+        if (
+            callback_props
+            and "dairy-free" in callback_props
+            or callback_props
+            or _is_vegan(name_lower)
+        ):
             pass
         else:
             for key in _dairy:
@@ -369,11 +370,12 @@ def detect_dietary_properties(
                     break
 
         # Gluten-free
-        if callback_props and "gluten-free" in callback_props:
-            pass
-        elif callback_props:
-            pass
-        elif _is_gluten_free(name_lower):
+        if (
+            callback_props
+            and "gluten-free" in callback_props
+            or callback_props
+            or _is_gluten_free(name_lower)
+        ):
             pass
         else:
             for key in _gluten:

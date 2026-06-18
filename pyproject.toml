@@ -1,7 +1,7 @@
 [project]
 name = "wright"
 version = "0.1.0"
-description = "Pure library for production planning, cost calculation, unit conversion, and shopping list aggregation."
+description = "Multi-domain Python library for bill-of-materials planning, recipe costing, shopping list aggregation, unit conversion, allergen detection, and nutrition analysis. Works for food recipes, construction, brewing, and manufacturing."
 readme = "README.md"
 authors = [
     { name = "Will Dean", email = "will@germanbakingasheville.com" }
@@ -13,10 +13,16 @@ dependencies = [
     "pyyaml>=6.0.3",
 ]
 keywords = [
+    "bill-of-materials",
+    "bom",
+    "construction",
+    "manufacturing",
+    "batch-production",
     "planning",
     "costing",
     "pricing",
     "production",
+    "procurement",
     "recipe",
     "supply-chain",
     "unit-conversion",
@@ -40,6 +46,7 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/3pm-baking/wright"
 Issues = "https://github.com/3pm-baking/wright/issues"
+Documentation = "https://wright.germanbakingasheville.com"
 
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]
@@ -48,9 +55,36 @@ build-backend = "uv_build"
 [tool.uv]
 package = true
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "D", "UP", "B", "C4", "SIM"]
+ignore = ["D105", "D107", "D203", "D212", "D417"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.coverage.run]
+source = ["src/wright"]
+omit = ["tests/*", "docs/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "def __repr__",
+    "class .*\\bProtocol\\):",
+    "raise NotImplementedError",
+]
+
 [dependency-groups]
 dev = [
+    "mkdocs-material>=9.6.0",
     "mkdocstrings-python>=2.0.4",
     "pytest>=9.0.3",
+    "pytest-cov>=6.2.0",
+    "ruff>=0.15.17",
+    "ty>=0.0.50",
     "zensical>=0.0.45",
 ]

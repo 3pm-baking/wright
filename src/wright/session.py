@@ -1,6 +1,6 @@
 """Production run models for batch planning.
 
-Data-source agnostic — recipes are referenced by name, not loaded here.
+Data-source agnostic — assemblies are referenced by name, not loaded here.
 """
 
 from __future__ import annotations
@@ -8,27 +8,56 @@ from __future__ import annotations
 import re
 from datetime import date as DateType
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ProductionItem(BaseModel):
-    """A recipe to be produced in a specific quantity."""
+    """An assembly (or recipe) to be produced in a specific quantity.
 
-    recipe: str = Field(
-        ..., description="Recipe name (matches keys in the recipes mapping)"
+    Uses ``assembly=`` as the canonical constructor argument.
+    ``recipe=`` is accepted for backward compatibility (mapped to ``assembly``).
+    """
+
+    assembly: str = Field(
+        ...,
+        description=(
+            "Assembly name (matches keys in the assemblies mapping). "
+            "Also called 'recipe' in food domains."
+        ),
     )
     quantity: float = Field(
         ...,
         gt=0,
         description=(
-            "Number of recipe batches to make. Supports fractional "
+            "Number of batches to make. Supports fractional "
             "quantities (e.g., 0.5 for a half batch)."
         ),
     )
 
+    @property
+    def recipe(self) -> str:
+        """Backward-compatible alias for :attr:`assembly`."""
+        return self.assembly
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_recipe_key(cls, data: object) -> object:
+        """Accept ``recipe=`` as an alias for ``assembly=`` in the constructor."""
+        if isinstance(data, dict) and "recipe" in data and "assembly" not in data:
+            data = {**data, "assembly": data.pop("recipe")}  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+        return data
+
+    def __mul__(self, factor: float) -> ProductionItem:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return ProductionItem(assembly=self.assembly, quantity=self.quantity * factor)
+
+    def __rmul__(self, factor: float) -> ProductionItem:
+        return self * factor
+
 
 class ProductionRun(BaseModel):
-    """A production run producing multiple recipes for one or more target dates."""
+    """A production run producing multiple assemblies for one or more target dates."""
 
     date: DateType = Field(..., description="Production date")
     production: list[ProductionItem] = Field(
@@ -36,55 +65,28 @@ class ProductionRun(BaseModel):
     )
     target_dates: list[DateType] = Field(..., description="Dates this run supplies")
 
+    def __add__(self, other: ProductionRun) -> ProductionRun:
+        """Merge two production runs.
 
-def combine_production_runs(runs: list[ProductionRun]) -> ProductionRun:
-    """Merge multiple production runs into one.
+        Production items are combined by assembly name (summing quantities).
+        Target dates are unioned and deduplicated. The earliest date is kept.
+        """
+        merged: dict[str, float] = {}
+        for item in self.production:
+            merged[item.assembly] = merged.get(item.assembly, 0) + item.quantity
+        for item in other.production:
+            merged[item.assembly] = merged.get(item.assembly, 0) + item.quantity
 
-    Combines production items by recipe name (summing quantities) and
-    unions target dates (deduplicated).  Uses the earliest date from
-    all runs as the combined date.
-
-    Args:
-        runs: List of ``ProductionRun`` to combine.
-
-    Returns:
-        A single ``ProductionRun`` covering all input runs.
-
-    Raises:
-        ValueError: If *runs* is empty.
-    """
-    if not runs:
-        raise ValueError("Cannot combine an empty list of runs")
-
-    # Sum production quantities by recipe name
-    merged_production: dict[str, float] = {}
-    for run in runs:
-        for item in run.production:
-            merged_production[item.recipe] = (
-                merged_production.get(item.recipe, 0) + item.quantity
-            )
-
-    production = [
-        ProductionItem(recipe=name, quantity=qty)
-        for name, qty in merged_production.items()
-    ]
-
-    # Union target dates and pick earliest date
-    all_targets: set[DateType] = set()
-    earliest = runs[0].date
-    for run in runs:
-        all_targets.update(run.target_dates)
-        if run.date < earliest:
-            earliest = run.date
-
-    return ProductionRun(
-        date=earliest,
-        production=production,
-        target_dates=sorted(all_targets),
-    )
+        return ProductionRun(
+            date=min(self.date, other.date),
+            production=[
+                ProductionItem(assembly=n, quantity=q) for n, q in merged.items()
+            ],
+            target_dates=sorted(set(self.target_dates) | set(other.target_dates)),
+        )
 
 
-def recipe_name_to_filename(recipe_name: str) -> str:
+def convert_recipe_name_to_filename(recipe_name: str) -> str:
     """Convert recipe name to kebab-case filename.
 
     Examples:

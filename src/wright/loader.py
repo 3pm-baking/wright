@@ -15,14 +15,13 @@ import yaml
 
 from wright.errors import PurchaseLoadError, RecipeLoadError
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Ingredient,
     NutritionInfo,
+    Purchase,
+    Recipe,
     RecipeComponent,
-    SimplePurchase,
 )
 from wright.supply import SupplyItem
-
 
 # ---------------------------------------------------------------------------
 # YAML loading
@@ -51,8 +50,8 @@ def load_yaml_file(path: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def load_base_recipe(path: Path) -> BaseRecipe:
-    """Load a ``BaseRecipe`` from a YAML file.
+def load_base_recipe(path: Path) -> Recipe:
+    """Load a ``Recipe`` from a YAML file.
 
     Expects the standard recipe YAML format with ``components``,
     ``prep_time``, ``cook_time``, and optional ``servings``.
@@ -61,26 +60,26 @@ def load_base_recipe(path: Path) -> BaseRecipe:
         path: Path to a recipe YAML file.
 
     Returns:
-        Parsed ``BaseRecipe``.
+        Parsed ``Recipe``.
 
     Raises:
         RecipeLoadError: If the file cannot be loaded or parsed.
     """
     try:
         data = load_yaml_file(path)
-    except FileNotFoundError:
-        raise RecipeLoadError(str(path), "File not found")
+    except FileNotFoundError as err:
+        raise RecipeLoadError(str(path), "File not found") from err
     except yaml.YAMLError as e:
-        raise RecipeLoadError(str(path), f"Invalid YAML: {e}")
+        raise RecipeLoadError(str(path), f"Invalid YAML: {e}") from e
 
     try:
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name=data["name"],
             components=[
                 RecipeComponent(
                     name=comp["name"],
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name=ing["name"],
                             quantity=ing["quantity"],
                             unit=ing["unit"],
@@ -91,7 +90,7 @@ def load_base_recipe(path: Path) -> BaseRecipe:
                             product_ref=ing.get("product_ref"),
                         )
                         for ing in comp.get("ingredients", [])
-                    ],
+                    ],  # ty:ignore[unknown-argument]
                 )
                 for comp in data.get("components", [])
             ],
@@ -106,9 +105,9 @@ def load_base_recipe(path: Path) -> BaseRecipe:
         return recipe
 
     except KeyError as e:
-        raise RecipeLoadError(str(path), f"Missing required field: {e}")
+        raise RecipeLoadError(str(path), f"Missing required field: {e}") from e
     except (TypeError, ValueError) as e:
-        raise RecipeLoadError(str(path), f"Invalid data: {e}")
+        raise RecipeLoadError(str(path), f"Invalid data: {e}") from e
 
 
 def list_recipe_files(directory: Path | str) -> list[Path]:
@@ -132,7 +131,7 @@ def list_recipe_files(directory: Path | str) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 
-def load_purchases(path: Path) -> list[SimplePurchase]:
+def load_purchases(path: Path) -> list[Purchase]:
     """Load grocery items from a YAML file.
 
     Expects a top-level ``purchases`` key with a list of purchase entries.
@@ -141,27 +140,27 @@ def load_purchases(path: Path) -> list[SimplePurchase]:
         path: Path to a grocery YAML file.
 
     Returns:
-        List of ``SimplePurchase`` objects.
+        List of ``Purchase`` objects.
 
     Raises:
         PurchaseLoadError: If the file cannot be loaded or parsed.
     """
     try:
         data = load_yaml_file(path)
-    except FileNotFoundError:
-        raise PurchaseLoadError(str(path), "File not found")
+    except FileNotFoundError as err:
+        raise PurchaseLoadError(str(path), "File not found") from err
     except yaml.YAMLError as e:
-        raise PurchaseLoadError(str(path), f"Invalid YAML: {e}")
+        raise PurchaseLoadError(str(path), f"Invalid YAML: {e}") from e
 
     purchases = data.get("purchases", [])
     if not isinstance(purchases, list):
         raise PurchaseLoadError(str(path), "Expected a 'purchases' list")
 
-    items: list[SimplePurchase] = []
+    items: list[Purchase] = []
 
     for entry in purchases:
         try:
-            item = SimplePurchase(
+            item = Purchase(
                 name=entry["name"],
                 brand=entry.get("brand"),
                 tags=entry.get("tags", ""),
@@ -175,9 +174,9 @@ def load_purchases(path: Path) -> list[SimplePurchase]:
         except KeyError as e:
             raise PurchaseLoadError(
                 str(path), f"Missing required field in purchase: {e}"
-            )
+            ) from e
         except (TypeError, ValueError) as e:
-            raise PurchaseLoadError(str(path), f"Invalid purchase data: {e}")
+            raise PurchaseLoadError(str(path), f"Invalid purchase data: {e}") from e
 
     return items
 
@@ -248,7 +247,7 @@ def load_nutrition_registry(path: Path) -> dict[str, NutritionInfo]:
     try:
         data = load_yaml_file(path)
     except yaml.YAMLError as e:
-        raise PurchaseLoadError(str(path), f"Invalid YAML: {e}")
+        raise PurchaseLoadError(str(path), f"Invalid YAML: {e}") from e
 
     records = data.get("nutrients", [])
     if not isinstance(records, list):
@@ -297,26 +296,7 @@ def load_supplies(path: Path) -> dict[str, SupplyItem]:
     Returns:
         ``dict[str, SupplyItem]`` keyed by ingredient name.
     """
-    if not path.exists():
-        return {}
+    from wright.supply import Stock
 
-    data = load_yaml_file(path)
-
-    items_list = data.get("pantry", data.get("items", []))
-
-    if not isinstance(items_list, list):
-        return {}
-
-    supply: dict[str, SupplyItem] = {}
-    for entry in items_list:
-        try:
-            item = SupplyItem(
-                name=entry["name"],
-                quantity=float(entry["quantity"]),
-                unit=entry["unit"],
-            )
-            supply[item.name] = item
-        except (KeyError, TypeError, ValueError):
-            continue
-
-    return supply
+    stock = Stock.from_yaml(path)
+    return {name: stock[name] for name in stock}

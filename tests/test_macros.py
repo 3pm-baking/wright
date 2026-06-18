@@ -6,8 +6,8 @@ import pytest
 
 from wright.macros import calculate_recipe_macros
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Ingredient,
+    Recipe,
     NutritionInfo,
     NutritionRegistry,
     RecipeComponent,
@@ -81,16 +81,16 @@ def overnight_registry(
 @pytest.fixture
 def simple_recipe():
     """Overnight Oats — 1 serving, 50g oats, 100g yogurt, 1tbsp honey, 1tbsp chia."""
-    return BaseRecipe(
+    return Recipe(
         name="Overnight Oats",
         components=[
             RecipeComponent(
                 name="Base",
                 ingredients=[
-                    BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-                    BaseIngredient(name="Greek Yogurt", quantity=100, unit="g"),
-                    BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
-                    BaseIngredient(name="Chia Seeds", quantity=1, unit="tbsp"),
+                    Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                    Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+                    Ingredient(name="Honey", quantity=1, unit="tbsp"),
+                    Ingredient(name="Chia Seeds", quantity=1, unit="tbsp"),
                 ],
             ),
         ],
@@ -115,15 +115,15 @@ def pie_crust_registry() -> NutritionRegistry:
 @pytest.fixture
 def pie_crust_recipe():
     """A sub-recipe used via product_ref."""
-    return BaseRecipe(
+    return Recipe(
         name="Pie Crust",
         components=[
             RecipeComponent(
                 name="Crust",
                 ingredients=[
-                    BaseIngredient(name="Flour", quantity=250, unit="g"),
-                    BaseIngredient(name="Butter", quantity=100, unit="g"),
-                    BaseIngredient(name="Salt", quantity=2, unit="g"),
+                    Ingredient(name="Flour", quantity=250, unit="g"),
+                    Ingredient(name="Butter", quantity=100, unit="g"),
+                    Ingredient(name="Salt", quantity=2, unit="g"),
                 ],
             ),
         ],
@@ -146,19 +146,19 @@ def pie_apple_registry() -> NutritionRegistry:
 @pytest.fixture
 def pie_recipe(pie_crust_recipe):
     """A recipe that references Pie Crust via product_ref (50g of crust filling)."""
-    return BaseRecipe(
+    return Recipe(
         name="Mini Pie",
         components=[
             RecipeComponent(
                 name="Filling",
                 ingredients=[
-                    BaseIngredient(
+                    Ingredient(
                         name="Pie Filling",
                         quantity=50,
                         unit="g",
                         product_ref="Pie Crust",
                     ),
-                    BaseIngredient(name="Apple", quantity=200, unit="g"),
+                    Ingredient(name="Apple", quantity=200, unit="g"),
                 ],
             ),
         ],
@@ -265,14 +265,14 @@ class TestCalculateRecipeMacros:
 
     def test_with_nutrition_lookup(self):
         """Test callback-based nutrition lookup (secondary fallback)."""
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Simple Bowl",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Quinoa", quantity=200, unit="g"),
-                        BaseIngredient(name="Chicken", quantity=150, unit="g"),
+                        Ingredient(name="Quinoa", quantity=200, unit="g"),
+                        Ingredient(name="Chicken", quantity=150, unit="g"),
                     ],
                 ),
             ],
@@ -319,14 +319,14 @@ class TestCalculateRecipeMacros:
                 protein_g=99, carbs_g=99, fat_g=99, fiber_g=99, kcal=999
             )
 
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Priority Test",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(name="HasRegistry", quantity=100, unit="g"),
-                        BaseIngredient(name="FromCallback", quantity=100, unit="g"),
+                        Ingredient(name="HasRegistry", quantity=100, unit="g"),
+                        Ingredient(name="FromCallback", quantity=100, unit="g"),
                     ],
                 ),
             ],
@@ -352,20 +352,20 @@ class TestCalculateRecipeMacros:
             "Skipped": oats_nutrition,
             "Zero": oats_nutrition,
         }
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(name="Active", quantity=100, unit="g"),
-                        BaseIngredient(
+                        Ingredient(name="Active", quantity=100, unit="g"),
+                        Ingredient(
                             name="Skipped",
                             quantity=50,
                             unit="g",
                             byproduct=True,
                         ),
-                        BaseIngredient(name="Zero", quantity=0, unit="g"),
+                        Ingredient(name="Zero", quantity=0, unit="g"),
                     ],
                 ),
             ],
@@ -390,13 +390,13 @@ class TestCalculateRecipeMacros:
                 kcal=389,
             ),
         }
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Bulk Batch",
             components=[
                 RecipeComponent(
                     name="Mix",
                     ingredients=[
-                        BaseIngredient(name="Oats", quantity=500, unit="g"),
+                        Ingredient(name="Oats", quantity=500, unit="g"),
                     ],
                 ),
             ],
@@ -412,13 +412,13 @@ class TestCalculateRecipeMacros:
 
     def test_missing_recipe_in_product_ref_skipped(self):
         """Missing recipe_index entry — recipe is silently skipped."""
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Unknown Sub",
                             quantity=100,
                             unit="g",
@@ -442,13 +442,13 @@ class TestCalculateRecipeMacros:
                 protein_g=10, carbs_g=76, fat_g=1, fiber_g=2.7, kcal=364
             ),
         }
-        sub = BaseRecipe(
+        sub = Recipe(
             name="Sub",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=100, unit="g"),
+                        Ingredient(name="Flour", quantity=100, unit="g"),
                     ],
                 ),
             ],
@@ -458,13 +458,13 @@ class TestCalculateRecipeMacros:
             net_weight_grams=None,
         )
 
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Main",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Sub Filling",
                             quantity=30,
                             unit="g",
@@ -490,13 +490,13 @@ class TestCalculateRecipeMacros:
         registry: NutritionRegistry = {
             "Oats": NutritionInfo(protein_g=10, carbs_g=0, fat_g=0, fiber_g=0, kcal=40),
         }
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Batch",
             components=[
                 RecipeComponent(
                     name="A",
                     ingredients=[
-                        BaseIngredient(name="Oats", quantity=100, unit="g"),
+                        Ingredient(name="Oats", quantity=100, unit="g"),
                     ],
                 ),
             ],

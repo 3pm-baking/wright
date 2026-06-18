@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from decimal import Decimal
-from typing import Callable, Iterable, Mapping
 
 import pint
 
@@ -14,11 +14,12 @@ from wright.errors import (
 )
 from wright.matching import ItemMatcher, find_matching_purchases
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
-    PurchasedItem,
+    Ingredient,
     IngredientCost,
+    Material,
     PriceRange,
+    PurchasedItem,
+    Recipe,
     RecipeCost,
 )
 from wright.units import (
@@ -171,31 +172,30 @@ def convert_with_density(
 
 
 def calculate_ingredient_cost(
-    ingredient: BaseIngredient,
-    grocery: PurchasedItem,
+    material: Material,
+    purchase: PurchasedItem,
     *,
     density_data: dict | None = None,
-    converter: Callable[[BaseIngredient, PurchasedItem, dict], Decimal | None]
-    | None = None,
+    converter: Callable[[Material, PurchasedItem, dict], Decimal | None] | None = None,
     ureg: pint.UnitRegistry | None = None,
 ) -> Decimal:
-    """Calculate the cost of an ingredient based on a grocery item's price.
+    """Calculate the cost of a BOM item based on a purchase item's price.
 
-    Handles unit conversion between recipe units and grocery units.
+    Handles unit conversion between BOM units and purchase units.
     For discrete units (each, packet), uses direct multiplication.
-    For pinch units with non-discrete grocery units, estimates ~0.25 tsp.
+    For pinch units with non-discrete purchase units, estimates ~0.25 tsp.
 
     Args:
-        ingredient: The recipe ingredient.
-        grocery: The grocery item to use for pricing.
+        material: The BOM item to cost.
+        purchase: The purchase item to use for pricing.
         density_data: Optional density data for unit conversion.
         converter: Optional custom cost function
-            ``(ingredient, grocery, density_data) -> Decimal | None``.
+            ``(material, purchase, density_data) -> Decimal | None``.
             Called first; if it returns a ``Decimal``, that value is used.
             If it returns ``None``, falls through to the built-in cascade.
 
     Returns:
-        The cost of the ingredient amount.
+        The cost of the material amount.
 
     Raises:
         UnitConversionError: If units cannot be converted.
@@ -204,95 +204,97 @@ def calculate_ingredient_cost(
 
     # Allow a custom converter to intercept before the built-in cascade
     if converter is not None:
-        result = converter(ingredient, grocery, density_data)
+        result = converter(material, purchase, density_data)
         if result is not None:
             return result
 
-    ing_unit_lower = ingredient.unit.lower()
-    groc_unit_lower = grocery.unit.lower()
+    ing_unit_lower = material.unit.lower()
+    groc_unit_lower = purchase.unit.lower()
 
     # Both are discrete — direct count multiplication
     if ing_unit_lower in DISCRETE_UNITS and groc_unit_lower in DISCRETE_UNITS:
-        cost_per_item = grocery.price / Decimal(str(grocery.quantity))
-        return cost_per_item * Decimal(str(ingredient.quantity))
+        cost_per_item = purchase.price / Decimal(str(purchase.quantity))
+        return cost_per_item * Decimal(str(material.quantity))
 
     # Pinch — estimate as ~0.25 tsp
     if ing_unit_lower in PINCH_UNITS:
-        if are_compatible("tsp", grocery.unit, ureg=ureg):
+        if are_compatible("tsp", purchase.unit, ureg=ureg):
             groc_in_tsp = (
-                parse_quantity(grocery.quantity, grocery.unit, ureg=ureg)
+                parse_quantity(purchase.quantity, purchase.unit, ureg=ureg)
                 .to("tsp")
                 .magnitude
             )
-            price_per_tsp = grocery.price / Decimal(str(groc_in_tsp))
-            pinch_in_tsp = Decimal("0.25") * Decimal(str(ingredient.quantity))
+            price_per_tsp = purchase.price / Decimal(str(groc_in_tsp))
+            pinch_in_tsp = Decimal("0.25") * Decimal(str(material.quantity))
             return price_per_tsp * pinch_in_tsp
         else:
-            return Decimal("0.01") * Decimal(str(ingredient.quantity))
+            return Decimal("0.01") * Decimal(str(material.quantity))
 
     # Same unit string — simple ratio (handles unregistered units like "box", "jar")
     if ing_unit_lower == groc_unit_lower:
-        price_per_unit = grocery.price / Decimal(str(grocery.quantity))
-        return price_per_unit * Decimal(str(ingredient.quantity))
+        price_per_unit = purchase.price / Decimal(str(purchase.quantity))
+        return price_per_unit * Decimal(str(material.quantity))
 
     # Unit-compatible — pint handles it
-    if are_compatible(ingredient.unit, grocery.unit, ureg=ureg):
+    if are_compatible(material.unit, purchase.unit, ureg=ureg):
         try:
-            ing_qty = parse_quantity(ingredient.quantity, ingredient.unit, ureg=ureg)
-            ing_in_groc_units = ing_qty.to(grocery.unit).magnitude
-            price_per_unit = grocery.price / Decimal(str(grocery.quantity))
+            ing_qty = parse_quantity(material.quantity, material.unit, ureg=ureg)
+            ing_in_groc_units = ing_qty.to(purchase.unit).magnitude
+            price_per_unit = purchase.price / Decimal(str(purchase.quantity))
             return price_per_unit * Decimal(str(ing_in_groc_units))
-        except pint.DimensionalityError:
-            raise UnitConversionError(ingredient.unit, grocery.unit, ingredient.name)
+        except pint.DimensionalityError as err:
+            raise UnitConversionError(
+                material.unit, purchase.unit, material.name
+            ) from err
 
-    # Incompatible but ingredient has an equivalent — try that
-    equiv_qty = ingredient.equivalent_quantity
-    equiv_unit = ingredient.equivalent_unit
+    # Incompatible but material has an equivalent — try that
+    equiv_qty = material.equivalent_quantity
+    equiv_unit = material.equivalent_unit
     if (
         equiv_qty is not None
         and equiv_unit is not None
-        and are_compatible(equiv_unit, grocery.unit, ureg=ureg)
+        and are_compatible(equiv_unit, purchase.unit, ureg=ureg)
     ):
         try:
-            BaseIngredient(
-                name=ingredient.name,
+            Material(
+                name=material.name,
                 quantity=equiv_qty,
                 unit=equiv_unit,
             )
             e_qty = parse_quantity(equiv_qty, equiv_unit, ureg=ureg)
-            in_groc = e_qty.to(grocery.unit).magnitude
-            price_per_unit = grocery.price / Decimal(str(grocery.quantity))
+            in_groc = e_qty.to(purchase.unit).magnitude
+            price_per_unit = purchase.price / Decimal(str(purchase.quantity))
             return price_per_unit * Decimal(str(in_groc))
         except Exception:
             pass
 
     # Not directly compatible — try density conversion
     converted = convert_with_density(
-        ingredient.name,
-        ingredient.quantity,
-        ingredient.unit,
-        grocery.unit,
+        material.name,
+        material.quantity,
+        material.unit,
+        purchase.unit,
         density_data,
     )
 
     if converted is not None:
-        price_per_unit = grocery.price / Decimal(str(grocery.quantity))
+        price_per_unit = purchase.price / Decimal(str(purchase.quantity))
         return price_per_unit * Decimal(str(converted))
 
-    raise UnitConversionError(ingredient.unit, grocery.unit, ingredient.name)
+    raise UnitConversionError(material.unit, purchase.unit, material.name)
 
 
 def calculate_ingredient_cost_range(
-    ingredient: BaseIngredient,
-    groceries: Iterable[PurchasedItem],
+    material: Material,
+    purchases: Iterable[PurchasedItem],
     *,
     density_data: dict | None = None,
 ) -> IngredientCost:
-    """Calculate the cost range for an ingredient across multiple grocery sources.
+    """Calculate the cost range for a material across multiple purchase sources.
 
     Args:
-        ingredient: The recipe ingredient.
-        groceries: Matching grocery items (output of
+        material: The BOM item to cost.
+        purchases: Matching purchase items (output of
             :func:`find_matching_purchases`).
         density_data: Optional density data for unit conversion.
 
@@ -300,36 +302,45 @@ def calculate_ingredient_cost_range(
         ``IngredientCost`` with price range and source information.
 
     Raises:
-        UnitConversionError: If *none* of the grocery items can be converted
-            to the ingredient's unit.
+        UnitConversionError: If *none* of the purchase items can be converted
+            to the material's unit.
     """
     density_data = density_data or {}
 
     costs: list[Decimal] = []
     sources: list[str] = []
 
-    for g in groceries:
+    for g in purchases:
         try:
-            cost = calculate_ingredient_cost(ingredient, g, density_data=density_data)
+            cost = calculate_ingredient_cost(material, g, density_data=density_data)
             costs.append(cost)
             source = g.store or "unknown"
             if hasattr(g, "brand") and getattr(g, "brand", None):
-                source = f"{source} {getattr(g, 'brand')}"
+                source = f"{source} {g.brand}"
             sources.append(source)
         except UnitConversionError:
             continue
 
     if not costs:
-        # All unit conversions failed — pick the first grocery for the error
-        first = next(iter(groceries), None)
+        # All unit conversions failed — pick the first purchase for the error
+        first = next(iter(purchases), None)
         raise UnitConversionError(
-            ingredient.unit,
+            material.unit,
             first.unit if first else "unknown",
-            ingredient.name,
+            material.name,
         )
 
     return IngredientCost(
-        ingredient=ingredient,
+        ingredient=Ingredient(
+            name=material.name,
+            quantity=material.quantity,
+            unit=material.unit,
+            require_tags=material.require_tags,
+            equivalent_quantity=material.equivalent_quantity,
+            equivalent_unit=material.equivalent_unit,
+            byproduct=material.byproduct,
+            product_ref=material.product_ref,
+        ),
         price_range=PriceRange(min_price=min(costs), max_price=max(costs)),
         sources=sources,
     )
@@ -340,20 +351,20 @@ def calculate_ingredient_cost_range(
 # ---------------------------------------------------------------------------
 
 
-def ingredient_to_grams(
-    ingredient: BaseIngredient,
+def convert_ingredient_to_grams(
+    material: Material,
     *,
     raise_on_error: bool = True,
     ureg: pint.UnitRegistry | None = None,
 ) -> float:
-    """Return the gram quantity for an ingredient.
+    """Return the gram quantity for a material.
 
     For packet units, uses ``equivalent_quantity`` (e.g. 1 packet = 8 g).
     For gram units, uses quantity directly.
     For other weight units, converts via pint.
 
     Args:
-        ingredient: The ingredient to resolve to grams.
+        material: The BOM item to resolve to grams.
         raise_on_error: If ``True`` (default), raises ``UnitConversionError``
             on failure.  If ``False``, returns ``0.0`` silently.
 
@@ -364,20 +375,20 @@ def ingredient_to_grams(
         UnitConversionError: If the unit cannot be resolved to grams and
             *raise_on_error* is ``True``.
     """
-    unit_lower = ingredient.unit.lower()
+    unit_lower = material.unit.lower()
 
     if unit_lower in {"packet", "packets"}:
-        if ingredient.equivalent_quantity is None:
+        if material.equivalent_quantity is None:
             if raise_on_error:
-                raise UnitConversionError(ingredient.unit, "g", ingredient.name)
+                raise UnitConversionError(material.unit, "g", material.name)
             return 0.0
-        return ingredient.equivalent_quantity
+        return material.equivalent_quantity
 
     try:
-        return float(parse_quantity(ingredient.quantity, unit_lower).to("g").magnitude)
-    except Exception:
+        return float(parse_quantity(material.quantity, unit_lower).to("g").magnitude)
+    except Exception as err:
         if raise_on_error:
-            raise UnitConversionError(ingredient.unit, "g", ingredient.name)
+            raise UnitConversionError(material.unit, "g", material.name) from err
         return 0.0
 
 
@@ -387,10 +398,10 @@ def ingredient_to_grams(
 
 
 def _cost_recipe_inner(
-    recipe: BaseRecipe,
-    groceries: Iterable[PurchasedItem],
+    recipe: Recipe,
+    purchases: Iterable[PurchasedItem],
     density_data: dict,
-    recipe_index: Mapping[str, BaseRecipe],
+    recipe_index: Mapping[str, Recipe],
     visited: frozenset[str],
     *,
     matcher: ItemMatcher,
@@ -408,7 +419,9 @@ def _cost_recipe_inner(
         raise RecipeCostErrors([ValueError(f"Recipe cycle detected: {cycle}")])
 
     ingredient_costs: list[IngredientCost] = []
-    errors: list[IngredientNotFoundError | UnitConversionError | RecipeCostErrors] = []
+    errors: list[
+        IngredientNotFoundError | UnitConversionError | RecipeCostErrors | ValueError
+    ] = []
     total_min = Decimal("0")
     total_max = Decimal("0")
 
@@ -428,7 +441,7 @@ def _cost_recipe_inner(
 
                 _sub_costs, sub_total = _cost_recipe_inner(
                     sub_recipe,
-                    groceries,
+                    purchases,
                     density_data,
                     recipe_index,
                     visited | {recipe.name},
@@ -442,8 +455,9 @@ def _cost_recipe_inner(
                     raise RecipeCostErrors(
                         [
                             ValueError(
-                                f"Sub-recipe '{ref_name}' has no net_weight_grams "
-                                "— cannot compute per-gram cost for product_ref."
+                                f"Sub-recipe '{ref_name}' has no "
+                                "net_weight_grams — cannot compute "
+                                "per-gram cost for product_ref."
                             )
                         ]
                     )
@@ -454,7 +468,7 @@ def _cost_recipe_inner(
                     max_price=sub_total.max_price / yield_dec,
                 )
 
-                grams_used = ingredient_to_grams(ingredient)
+                grams_used = convert_ingredient_to_grams(ingredient)
                 grams_dec = Decimal(str(grams_used))
 
                 cost = IngredientCost(
@@ -466,8 +480,8 @@ def _cost_recipe_inner(
                     sources=[f"{sub_recipe.name} (sub-recipe, {grams_used:.1f}g)"],
                 )
             else:
-                # ── Standard: match to grocery ──────────────────────────
-                matching = matcher(ingredient, groceries)
+                # ── Standard: match to purchase ──────────────────────────
+                matching = matcher(ingredient, purchases)
                 cost = calculate_ingredient_cost_range(
                     ingredient, matching, density_data=density_data
                 )
@@ -491,25 +505,25 @@ def _cost_recipe_inner(
 
 
 def calculate_recipe_cost(
-    recipe: BaseRecipe,
-    groceries: Iterable[PurchasedItem],
+    recipe: Recipe,
+    purchases: Iterable[PurchasedItem],
     *,
     density_data: dict | None = None,
-    recipe_index: Mapping[str, BaseRecipe] | None = None,
+    recipe_index: Mapping[str, Recipe] | None = None,
     matcher: ItemMatcher | None = None,
 ) -> RecipeCost:
     """Calculate the full cost breakdown for a recipe.
 
-    Resolves ingredients to grocery items.  When an ingredient has
+    Resolves ingredients to purchase items.  When an ingredient has
     ``product_ref`` set, the function looks up the referenced recipe in
     *recipe_index* and recursively costs it — supporting arbitrary nesting
     depths with cycle detection.
 
     Args:
         recipe: The recipe to cost.
-        groceries: Available grocery price data (any ``PurchasedItem``).
+        purchases: Available purchase price data (any ``PurchasedItem``).
         density_data: Optional density data for unit conversion.
-        recipe_index: Optional mapping of recipe name → ``BaseRecipe`` for
+        recipe_index: Optional mapping of recipe name → ``Recipe`` for
             resolving ``product_ref`` references.
         matcher: Optional custom matching function.  Defaults to
             :func:`find_matching_purchases` (exact name + tag filter).
@@ -526,7 +540,7 @@ def calculate_recipe_cost(
 
     ingredient_costs, total_range = _cost_recipe_inner(
         recipe,
-        groceries,
+        purchases,
         density_data,
         recipe_index,
         frozenset(),
