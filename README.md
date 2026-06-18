@@ -5,7 +5,7 @@
 
 # wright
 
-[![wright](https://raw.githubusercontent.com/3pm-baking/wright/main/docs/assets/wright-logo.png)](https://wright.germanbakingasheville.com)
+[![wright](https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/wright-logo.png)](https://wright.germanbakingasheville.com)
 
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.
@@ -262,7 +262,7 @@ MIT. See [LICENSE](LICENSE).
 <br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/3pm-baking/wright/main/docs/assets/logo.png" width="120" alt="3pm German Baking">
+  <img src="https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/logo.png" width="120" alt="3pm German Baking">
 </p>
 <p align="center">
   <a href="https://github.com/3pm-baking/wright">wright</a> is created and maintained by
