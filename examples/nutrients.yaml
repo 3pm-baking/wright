@@ -111,3 +111,71 @@ nutrients:
       kcal: 149
     source:
       usda-fdc: 169230
+
+  - ingredient: Spinach
+    nutrition:
+      protein_g: 2.9
+      carbs_g: 3.6
+      fat_g: 0.4
+      fiber_g: 2.2
+      kcal: 23
+    source:
+      usda-fdc: 168462
+
+  - ingredient: Banana
+    nutrition:
+      protein_g: 1.1
+      carbs_g: 22.8
+      fat_g: 0.3
+      fiber_g: 2.6
+      kcal: 89
+    source:
+      usda-fdc: 173944
+
+  - ingredient: Protein Powder
+    nutrition:
+      protein_g: 80.0
+      carbs_g: 8.0
+      fat_g: 5.0
+      fiber_g: 0
+      kcal: 400
+    source:
+      package label: whey isolate
+
+  - ingredient: Salt
+    nutrition:
+      protein_g: 0
+      carbs_g: 0
+      fat_g: 0
+      fiber_g: 0
+      kcal: 0
+
+  - ingredient: Vegetable Broth
+    nutrition:
+      protein_g: 0.4
+      carbs_g: 1.0
+      fat_g: 0.1
+      fiber_g: 0
+      kcal: 6
+    source:
+      usda-fdc: 170521
+
+  - ingredient: Chicken Breast
+    nutrition:
+      protein_g: 31.0
+      carbs_g: 0
+      fat_g: 3.6
+      fiber_g: 0
+      kcal: 165
+    source:
+      usda-fdc: 171477
+
+  - ingredient: Chickpeas
+    nutrition:
+      protein_g: 7.0
+      carbs_g: 27.4
+      fat_g: 2.6
+      fiber_g: 7.6
+      kcal: 164
+    source:
+      usda-fdc: 173757

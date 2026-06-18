@@ -1,0 +1,32 @@
+name: Quinoa Chickpea Bowl
+prep_time: 10
+cook_time: 20
+servings: 1
+
+components:
+  - name: Grain & Legume
+    ingredients:
+      - name: Quinoa
+        quantity: 100
+        unit: g
+      - name: Chickpeas
+        quantity: 240
+        unit: g
+
+  - name: Greens & Dressing
+    ingredients:
+      - name: Spinach
+        quantity: 2
+        unit: cup
+      - name: Tahini
+        quantity: 2
+        unit: tbsp
+      - name: Lemon Juice
+        quantity: 1
+        unit: tbsp
+
+instructions:
+  - Cook quinoa according to package directions, 15-20 min
+  - Drain and rinse chickpeas
+  - Toss spinach, quinoa, and chickpeas together
+  - Whisk tahini and lemon juice, drizzle over bowl
