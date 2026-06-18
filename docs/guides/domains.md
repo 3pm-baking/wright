@@ -43,7 +43,7 @@ for mc in materials_costed:
     print(f"  {mc.item.name}: ${mc.total_cost} ({mc.store})")
 
 # Use construction-specific categorization
-from wright import CategoryRule, categorize_ingredient
+from wright import CategoryRule, categorize_item
 
 lumberyard_rules = [
     CategoryRule(category="Lumber", priority=0,
