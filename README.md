@@ -65,11 +65,16 @@ print(cost.total_cost_range.midpoint)         # → 3.10
 print(cost.cost_per_serving_range.midpoint)   # → 0.26
 ```
 
-## Planning
+## Planning a production run
 
 ```python
 from datetime import date
-from wright import ProductionRun, ProductionItem, generate_shopping_list
+from wright import (
+    ProductionRun, ProductionItem,
+    generate_shopping_list, group_shopping_items,
+    calculate_shopping_list_cost, analyze_menu,
+    DEFAULT_CATEGORY_RULES,
+)
 
 session = ProductionRun(
     date=date(2026, 6, 20),
@@ -78,26 +83,47 @@ session = ProductionRun(
 )
 
 shopping = generate_shopping_list(session, [cake])
-
-for group in shopping.groups:
-    for item in group.items:
-        print(f"{item.name}: {item.quantity} {item.unit}")
 ```
 
-Enrich with costs, then analyze:
+Group items by store aisle:
 
 ```python
-from wright import calculate_shopping_list_cost, analyze_menu
+grouped = group_shopping_items(
+    shopping.all_items,
+    category_rules=DEFAULT_CATEGORY_RULES,
+)
+for group in grouped:
+    for item in group.items:
+        print(f"  {item.name:<22s} {item.quantity:g} {item.unit}")
+```
 
-items = calculate_shopping_list_cost(shopping, groceries)
+```
+  Dairy & Eggs  ----------------------------------------------
+  Butter                        600 g
+  Lemon Juice                   9 tbsp
+
+  Dry Goods  -------------------------------------------------
+  Flour                         900 g
+```
+
+Enrich with costs and analyze:
+
+```python
+costs = calculate_shopping_list_cost(shopping, groceries)
+total = sum(c.total_cost for c in costs if c.total_cost is not None)
+# → Decimal('9.30')
+
 menu = analyze_menu(
     [ProductionItem(assembly="Lemon Cake", quantity=3)],
     [cake], groceries,
 )
-print(menu.total_cost)
 for item in menu.top_drivers:
     print(f"  {item.item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
+# → Butter: $3.29 (35%)
+# → Flour: $2.39 (26%)
 ```
+
+[Full grocery list example](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py) with 3 recipes, 16 grocery items, and formatted output.
 
 ## Allergens and dietary badges
 
