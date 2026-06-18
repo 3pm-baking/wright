@@ -4,6 +4,7 @@ site_url: https://wright.germanbakingasheville.com
 repo_url: https://github.com/3pm-baking/wright
 theme:
   name: material
+  favicon: assets/favicon.png
 
 extra:
   social:
