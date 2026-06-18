@@ -9,25 +9,25 @@ import pytest
 
 from wright.errors import IngredientNotFoundError
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Ingredient,
+    Recipe,
     DEFAULT_CATEGORY_RULES,
     RecipeComponent,
     ServingRange,
-    SimplePurchase,
+    Purchase,
 )
 from wright.matching import chain, cheapest_picker
 from wright.planning import (
-    ShoppingItem,
     ShoppingList,
-    add_costs_to_shopping_list,
+    calculate_shopping_list_cost,
     analyze_menu,
     estimate_total_items,
     format_quantity,
     generate_shopping_list,
     group_shopping_items,
-    normalize_volume_for_grocery,
+    normalize_volume_us,
 )
+from wright.supply import SupplyItem
 from wright.session import ProductionItem, ProductionRun
 
 
@@ -37,14 +37,14 @@ from wright.session import ProductionItem, ProductionRun
 @pytest.fixture
 def sample_recipes():
     return {
-        "Oats": BaseRecipe(
+        "Oats": Recipe(
             name="Oats",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-                        BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
+                        Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                        Ingredient(name="Honey", quantity=1, unit="tbsp"),
                     ],
                 )
             ],
@@ -52,14 +52,14 @@ def sample_recipes():
             cook_time=0,
             servings=1,
         ),
-        "Smoothie": BaseRecipe(
+        "Smoothie": Recipe(
             name="Smoothie",
             components=[
                 RecipeComponent(
                     name="Blend",
                     ingredients=[
-                        BaseIngredient(name="Banana", quantity=1, unit="each"),
-                        BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
+                        Ingredient(name="Banana", quantity=1, unit="each"),
+                        Ingredient(name="Honey", quantity=1, unit="tbsp"),
                     ],
                 )
             ],
@@ -75,31 +75,31 @@ def sample_session():
     return ProductionRun(
         date=date(2026, 6, 1),
         production=[
-            ProductionItem(recipe="Oats", quantity=1),
-            ProductionItem(recipe="Smoothie", quantity=1),
+            ProductionItem(assembly="Oats", quantity=1),
+            ProductionItem(assembly="Smoothie", quantity=1),
         ],
         target_dates=[date(2026, 6, 2)],
     )
 
 
 @pytest.fixture
-def sample_groceries():
+def sample_purchases():
     return [
-        SimplePurchase(
+        Purchase(
             name="Rolled Oats",
             quantity=1000,
             unit="g",
             price=Decimal("3.49"),
             store="Market",
         ),
-        SimplePurchase(
+        Purchase(
             name="Honey",
             quantity=340,
             unit="g",
             price=Decimal("5.99"),
             store="Market",
         ),
-        SimplePurchase(
+        Purchase(
             name="Banana",
             quantity=1,
             unit="each",
@@ -134,15 +134,15 @@ class TestFormatQuantity:
 
 class TestNormalizeVolumeForGrocery:
     def test_large_volume_to_gallons(self):
-        qty, unit = normalize_volume_for_grocery(4000, "ml")
+        qty, unit = normalize_volume_us(4000, "ml")
         assert unit == "gallon"
 
     def test_non_volume_passthrough(self):
-        qty, unit = normalize_volume_for_grocery(500, "g")
+        qty, unit = normalize_volume_us(500, "g")
         assert unit == "g"
 
     def test_tbsp_small_amount(self):
-        qty, unit = normalize_volume_for_grocery(3, "tbsp")
+        qty, unit = normalize_volume_us(3, "tbsp")
         assert unit in ("tbsp", "ml")
 
 
@@ -158,7 +158,7 @@ class TestGenerateShoppingList:
         # Honey appears in both recipes (1 tbsp each = 2 tbsp total)
         items = result.all_items
         honey = next(i for i in items if i.name == "Honey")
-        assert honey.total_quantity > 0
+        assert honey.quantity > 0
 
     def test_production_summary(self, sample_session, sample_recipes):
         result = generate_shopping_list(sample_session, sample_recipes)
@@ -173,7 +173,7 @@ class TestGenerateShoppingList:
     def test_missing_recipe_raises(self, sample_recipes):
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Ghost Cake", quantity=1)],
+            production=[ProductionItem(assembly="Ghost Cake", quantity=1)],
             target_dates=[date(2026, 6, 2)],
         )
         with pytest.raises(KeyError):
@@ -182,24 +182,24 @@ class TestGenerateShoppingList:
     def test_scaled_production(self, sample_recipes):
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Oats", quantity=3)],
+            production=[ProductionItem(assembly="Oats", quantity=3)],
             target_dates=[date(2026, 6, 2)],
         )
         result = generate_shopping_list(session, sample_recipes)
         oats = next(i for i in result.all_items if i.name == "Rolled Oats")
-        assert oats.total_quantity == 150  # 50 * 3
+        assert oats.quantity == 150  # 50 * 3
 
 
 class TestEstimateTotalItems:
     def test_range_servings(self):
         recipes = {
-            "Cake": BaseRecipe(
+            "Cake": Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
                         name="Base",
                         ingredients=[
-                            BaseIngredient(name="Flour", quantity=300, unit="g"),
+                            Ingredient(name="Flour", quantity=300, unit="g"),
                         ],
                     )
                 ],
@@ -210,7 +210,7 @@ class TestEstimateTotalItems:
         }
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Cake", quantity=2)],
+            production=[ProductionItem(assembly="Cake", quantity=2)],
             target_dates=[],
         )
         # midpoint = 6, * 2 batches = 12
@@ -218,13 +218,13 @@ class TestEstimateTotalItems:
 
     def test_exact_servings(self):
         recipes = {
-            "Cake": BaseRecipe(
+            "Cake": Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
                         name="Base",
                         ingredients=[
-                            BaseIngredient(name="Flour", quantity=300, unit="g"),
+                            Ingredient(name="Flour", quantity=300, unit="g"),
                         ],
                     )
                 ],
@@ -235,7 +235,7 @@ class TestEstimateTotalItems:
         }
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Cake", quantity=1)],
+            production=[ProductionItem(assembly="Cake", quantity=1)],
             target_dates=[],
         )
         assert estimate_total_items(session, recipes) == 10
@@ -244,16 +244,16 @@ class TestEstimateTotalItems:
 class TestGroupShoppingItems:
     def test_categorizes(self):
         items = [
-            ShoppingItem(name="Spinach", total_quantity=200, unit="g"),
-            ShoppingItem(name="Butter", total_quantity=100, unit="g"),
+            SupplyItem(name="Spinach", quantity=200, unit="g"),
+            SupplyItem(name="Butter", quantity=100, unit="g"),
         ]
         groups = group_shopping_items(items, category_rules=DEFAULT_CATEGORY_RULES)
         assert len(groups) == 2
 
     def test_kitchen_items_excluded(self):
         items = [
-            ShoppingItem(name="Water", total_quantity=500, unit="ml"),
-            ShoppingItem(name="Flour", total_quantity=300, unit="g"),
+            SupplyItem(name="Water", quantity=500, unit="ml"),
+            SupplyItem(name="Flour", quantity=300, unit="g"),
         ]
         groups = group_shopping_items(
             items,
@@ -270,11 +270,11 @@ class TestGroupShoppingItems:
 
 class TestAddCostsToShoppingList:
     def test_enriches_costs(
-        self, sample_session, sample_recipes, sample_groceries, density_data
+        self, sample_session, sample_recipes, sample_purchases, density_data
     ):
         shopping = generate_shopping_list(sample_session, sample_recipes)
-        enriched = add_costs_to_shopping_list(
-            shopping, sample_groceries, density_data=density_data
+        enriched = calculate_shopping_list_cost(
+            shopping, sample_purchases, density_data=density_data
         )
         assert len(enriched) == len(shopping.all_items)
 
@@ -286,17 +286,17 @@ class TestAddCostsToShoppingList:
             assert e.total_cost > Decimal("0")
 
     def test_missing_price_flagged(
-        self, sample_session, sample_recipes, sample_groceries, density_data
+        self, sample_session, sample_recipes, sample_purchases, density_data
     ):
         # Add an ingredient with no matching grocery
         recipes_with_unknown = dict(sample_recipes)
-        recipes_with_unknown["Mystery"] = BaseRecipe(
+        recipes_with_unknown["Mystery"] = Recipe(
             name="Mystery",
             components=[
                 RecipeComponent(
                     name="X",
                     ingredients=[
-                        BaseIngredient(name="Unobtainium", quantity=1, unit="g"),
+                        Ingredient(name="Unobtainium", quantity=1, unit="g"),
                     ],
                 )
             ],
@@ -306,14 +306,14 @@ class TestAddCostsToShoppingList:
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[
-                ProductionItem(recipe="Oats", quantity=1),
-                ProductionItem(recipe="Mystery", quantity=1),
+                ProductionItem(assembly="Oats", quantity=1),
+                ProductionItem(assembly="Mystery", quantity=1),
             ],
             target_dates=[],
         )
         shopping = generate_shopping_list(session, recipes_with_unknown)
-        enriched = add_costs_to_shopping_list(
-            shopping, sample_groceries, density_data=density_data
+        enriched = calculate_shopping_list_cost(
+            shopping, sample_purchases, density_data=density_data
         )
         missing = [e for e in enriched if e.missing_price]
         assert len(missing) >= 1
@@ -324,26 +324,26 @@ class TestAddCostsToShoppingList:
 
 
 class TestAnalyzeMenu:
-    def test_basic_analysis(self, sample_recipes, sample_groceries, density_data):
+    def test_basic_analysis(self, sample_recipes, sample_purchases, density_data):
         result = analyze_menu(
-            production=[ProductionItem(recipe="Oats", quantity=1)],
-            recipes=sample_recipes,
-            groceries=sample_groceries,
+            production=[ProductionItem(assembly="Oats", quantity=1)],
+            assemblies=sample_recipes,
+            purchases=sample_purchases,
             density_data=density_data,
         )
         assert result.total_cost is not None
         assert result.total_cost > Decimal("0")
         assert len(result.missing_ingredients) == 0
 
-    def test_missing_ingredients(self, sample_groceries):
+    def test_missing_ingredients(self, sample_purchases):
         recipes = {
-            "Mystery": BaseRecipe(
+            "Mystery": Recipe(
                 name="Mystery",
                 components=[
                     RecipeComponent(
                         name="X",
                         ingredients=[
-                            BaseIngredient(name="Unobtainium", quantity=1, unit="g"),
+                            Ingredient(name="Unobtainium", quantity=1, unit="g"),
                         ],
                     )
                 ],
@@ -352,9 +352,9 @@ class TestAnalyzeMenu:
             ),
         }
         result = analyze_menu(
-            production=[ProductionItem(recipe="Mystery", quantity=1)],
-            recipes=recipes,
-            groceries=sample_groceries,
+            production=[ProductionItem(assembly="Mystery", quantity=1)],
+            assemblies=recipes,
+            purchases=sample_purchases,
         )
         assert result.total_cost is None
         assert "Unobtainium" in result.missing_ingredients
@@ -369,14 +369,14 @@ class TestProductRefExpansion:
     def test_simple_product_ref_expanded(self):
         """A recipe referencing a sub-recipe via product_ref should include
         the sub-recipe's ingredients, not the product_ref ingredient itself."""
-        sub = BaseRecipe(
+        sub = Recipe(
             name="Vanilla Sugar",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Sugar", quantity=200, unit="g"),
-                        BaseIngredient(name="Vanilla Bean", quantity=1, unit="each"),
+                        Ingredient(name="Sugar", quantity=200, unit="g"),
+                        Ingredient(name="Vanilla Bean", quantity=1, unit="each"),
                     ],
                 )
             ],
@@ -384,19 +384,19 @@ class TestProductRefExpansion:
             cook_time=0,
             net_weight_grams=200,
         )
-        main = BaseRecipe(
+        main = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Vanilla Sugar",
                             product_ref="Vanilla Sugar",
                             quantity=20,
                             unit="g",
                         ),
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 )
             ],
@@ -406,7 +406,7 @@ class TestProductRefExpansion:
         recipes = {"Cake": main, "Vanilla Sugar": sub}
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Cake", quantity=1)],
+            production=[ProductionItem(assembly="Cake", quantity=1)],
             target_dates=[],
         )
         result = generate_shopping_list(session, recipes)
@@ -419,18 +419,18 @@ class TestProductRefExpansion:
         assert "Vanilla Sugar" not in items
 
         # Quantities are scaled: 20g out of 200g yield = 0.1x scale
-        assert items["Sugar"].total_quantity == pytest.approx(20.0, abs=0.1)
-        assert items["Vanilla Bean"].total_quantity == pytest.approx(0.1, abs=0.01)
+        assert items["Sugar"].quantity == pytest.approx(20.0, abs=0.1)
+        assert items["Vanilla Bean"].quantity == pytest.approx(0.1, abs=0.01)
 
     def test_product_ref_missing_recipe_kept_as_is(self):
         """If the product_ref recipe is not in the index, keep the ingredient."""
-        main = BaseRecipe(
+        main = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Ghost Sugar",
                             product_ref="Ghost Sugar",
                             quantity=20,
@@ -445,7 +445,7 @@ class TestProductRefExpansion:
         recipes = {"Cake": main}
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Cake", quantity=1)],
+            production=[ProductionItem(assembly="Cake", quantity=1)],
             target_dates=[],
         )
         result = generate_shopping_list(session, recipes)
@@ -454,13 +454,13 @@ class TestProductRefExpansion:
 
     def test_product_ref_cycle_detected(self):
         """A → B → A cycle should not infinite loop."""
-        a = BaseRecipe(
+        a = Recipe(
             name="A",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="B-ref", product_ref="B", quantity=100, unit="g"
                         ),
                     ],
@@ -470,13 +470,13 @@ class TestProductRefExpansion:
             cook_time=0,
             net_weight_grams=100,
         )
-        b = BaseRecipe(
+        b = Recipe(
             name="B",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="A-ref", product_ref="A", quantity=50, unit="g"
                         ),
                     ],
@@ -489,7 +489,7 @@ class TestProductRefExpansion:
         recipes = {"A": a, "B": b}
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="A", quantity=1)],
+            production=[ProductionItem(assembly="A", quantity=1)],
             target_dates=[],
         )
         result = generate_shopping_list(session, recipes)
@@ -507,20 +507,20 @@ class TestEquivalentQuantityAggregation:
     def test_packet_and_gram_merged(self):
         """1 packet (37g) + 74g should merge into 111g."""
         recipes = {
-            "Cake": BaseRecipe(
+            "Cake": Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
                         name="Base",
                         ingredients=[
-                            BaseIngredient(
+                            Ingredient(
                                 name="Pudding",
                                 quantity=1,
                                 unit="packet",
                                 equivalent_quantity=37,
                                 equivalent_unit="g",
                             ),
-                            BaseIngredient(
+                            Ingredient(
                                 name="Pudding",
                                 quantity=74,
                                 unit="g",
@@ -534,13 +534,13 @@ class TestEquivalentQuantityAggregation:
         }
         session = ProductionRun(
             date=date(2026, 6, 1),
-            production=[ProductionItem(recipe="Cake", quantity=1)],
+            production=[ProductionItem(assembly="Cake", quantity=1)],
             target_dates=[],
         )
         result = generate_shopping_list(session, recipes)
         pudding = next(i for i in result.all_items if i.name == "Pudding")
         assert pudding.unit in ("g", "gram")
-        assert pudding.total_quantity == pytest.approx(111.0, abs=0.1)
+        assert pudding.quantity == pytest.approx(111.0, abs=0.1)
 
 
 # ── Custom grocery matcher ─────────────────────────────────────────────────
@@ -551,22 +551,22 @@ class TestCustomMatcher:
 
     def test_add_costs_uses_custom_matcher(self, sample_session, sample_recipes):
         """A custom matcher function is used instead of the default."""
-        grocery = SimplePurchase(
+        grocery = Purchase(
             name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")
         )
 
-        def fuzzy_matcher(ingredient, groceries):
+        def fuzzy_matcher(ingredient, purchases):
             """Matches if grocery name is a substring of ingredient name."""
-            return [g for g in groceries if g.name.lower() in ingredient.name.lower()]
+            return [g for g in purchases if g.name.lower() in ingredient.name.lower()]
 
         shopping = generate_shopping_list(sample_session, sample_recipes)
 
         # Default matcher finds exact matches
-        enriched_default = add_costs_to_shopping_list(
+        enriched_default = calculate_shopping_list_cost(
             shopping, [grocery], density_data={}
         )
         # Custom matcher should find at least as many matches
-        enriched_custom = add_costs_to_shopping_list(
+        enriched_custom = calculate_shopping_list_cost(
             shopping, [grocery], density_data={}, matcher=fuzzy_matcher
         )
 
@@ -575,24 +575,24 @@ class TestCustomMatcher:
         assert known_custom >= known_default
 
     def test_analyze_menu_passes_matcher_through(self, sample_recipes, density_data):
-        """analyze_menu passes the custom matcher to add_costs_to_shopping_list."""
+        """analyze_menu passes the custom matcher to calculate_shopping_list_cost."""
 
-        def strict_matcher(ingredient, groceries):
+        def strict_matcher(ingredient, purchases):
             """Only matches exact name."""
-            return [g for g in groceries if g.name == ingredient.name]
+            return [g for g in purchases if g.name == ingredient.name]
 
-        grocery = SimplePurchase(
+        grocery = Purchase(
             name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")
         )
-        groceries = [
+        purchases = [
             grocery,
-            SimplePurchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
+            Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
         ]
 
         result = analyze_menu(
-            production=[ProductionItem(recipe="Oats", quantity=1)],
-            recipes=sample_recipes,
-            groceries=groceries,
+            production=[ProductionItem(assembly="Oats", quantity=1)],
+            assemblies=sample_recipes,
+            purchases=purchases,
             density_data=density_data,
             matcher=strict_matcher,
         )
@@ -603,17 +603,17 @@ class TestCustomMatcher:
     def test_custom_matcher_handles_no_match(self):
         """A custom matcher that raises IngredientNotFoundError propagates."""
 
-        def picky_matcher(ingredient, groceries):
+        def picky_matcher(ingredient, purchases):
             raise IngredientNotFoundError(ingredient.name)
 
         recipes = {
-            "Cake": BaseRecipe(
+            "Cake": Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
                         name="Base",
                         ingredients=[
-                            BaseIngredient(name="Flour", quantity=300, unit="g"),
+                            Ingredient(name="Flour", quantity=300, unit="g"),
                         ],
                     )
                 ],
@@ -624,12 +624,12 @@ class TestCustomMatcher:
         shopping = generate_shopping_list(
             ProductionRun(
                 date=date(2026, 6, 1),
-                production=[ProductionItem(recipe="Cake", quantity=1)],
+                production=[ProductionItem(assembly="Cake", quantity=1)],
                 target_dates=[],
             ),
             recipes,
         )
-        enriched = add_costs_to_shopping_list(
+        enriched = calculate_shopping_list_cost(
             shopping, [], density_data={}, matcher=picky_matcher
         )
         assert all(e.missing_price for e in enriched)
@@ -641,14 +641,14 @@ class TestCustomMatcher:
 class TestCustomPicker:
     def test_picker_selects_grocery(self, sample_session, sample_recipes):
         """A custom picker chooses a specific grocery from matches."""
-        a = SimplePurchase(
+        a = Purchase(
             name="Rolled Oats",
             quantity=1000,
             unit="g",
             price=Decimal("5.00"),
             store="Fancy Store",
         )
-        b = SimplePurchase(
+        b = Purchase(
             name="Rolled Oats",
             quantity=500,
             unit="g",
@@ -656,11 +656,11 @@ class TestCustomPicker:
             store="Budget Mart",
         )
 
-        def pick_cheapest(ingredient, groceries):
-            return cheapest_picker(ingredient, groceries)
+        def pick_cheapest(ingredient, purchases):
+            return cheapest_picker(ingredient, purchases)
 
         shopping = generate_shopping_list(sample_session, sample_recipes)
-        enriched = add_costs_to_shopping_list(
+        enriched = calculate_shopping_list_cost(
             shopping,
             [a, b],
             picker=pick_cheapest,
@@ -672,10 +672,10 @@ class TestCustomPicker:
     def test_picker_with_chain(self, sample_session, sample_recipes):
         """Chain composes pickers that fall through."""
 
-        def pick_nothing(ingredient, groceries):
+        def pick_nothing(ingredient, purchases):
             return None
 
-        b = SimplePurchase(
+        b = Purchase(
             name="Rolled Oats",
             quantity=500,
             unit="g",
@@ -683,7 +683,7 @@ class TestCustomPicker:
             store="Budget Mart",
         )
         shopping = generate_shopping_list(sample_session, sample_recipes)
-        enriched = add_costs_to_shopping_list(
+        enriched = calculate_shopping_list_cost(
             shopping,
             [b],
             picker=chain(pick_nothing, cheapest_picker),
@@ -692,50 +692,50 @@ class TestCustomPicker:
         assert oats.store == "Budget Mart"
 
     def test_pinned_picker_with_analyze_menu(self, sample_recipes, density_data):
-        """analyze_menu passes picker through to add_costs_to_shopping_list."""
+        """analyze_menu passes picker through to calculate_shopping_list_cost."""
         from wright.matching import chain, pinned_picker
 
-        pinned = SimplePurchase(
+        pinned = Purchase(
             name="Rolled Oats",
             quantity=1000,
             unit="g",
             price=Decimal("5.00"),
             store="Pinned Store",
         )
-        groceries = [
+        purchases = [
             pinned,
-            SimplePurchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
+            Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
         ]
         result = analyze_menu(
-            production=[ProductionItem(recipe="Oats", quantity=1)],
-            recipes=sample_recipes,
-            groceries=groceries,
+            production=[ProductionItem(assembly="Oats", quantity=1)],
+            assemblies=sample_recipes,
+            purchases=purchases,
             density_data=density_data,
             picker=chain(pinned_picker({"Rolled Oats": pinned}), cheapest_picker),
         )
         assert result.total_cost is not None
 
 
-# ── cost_items (standalone item costing) ─────────────────────────────
+# ── calculate_item_costs (standalone item costing) ─────────────────────────────
 
 
 class TestCostIngredients:
     def test_costs_simple_items(self):
         items = [
-            BaseIngredient(name="Toothpicks", quantity=1, unit="box"),
-            BaseIngredient(name="Flour", quantity=500, unit="g"),
+            Ingredient(name="Toothpicks", quantity=1, unit="box"),
+            Ingredient(name="Flour", quantity=500, unit="g"),
         ]
         purchases = [
-            SimplePurchase(
+            Purchase(
                 name="Toothpicks", quantity=5, unit="box", price=Decimal("10.00")
             ),
-            SimplePurchase(
+            Purchase(
                 name="Flour", quantity=1000, unit="g", price=Decimal("3.00")
             ),
         ]
-        from wright.planning import cost_items
+        from wright.planning import calculate_item_costs
 
-        result = cost_items(items, purchases)
+        result = calculate_item_costs(items, purchases)
         assert len(result) == 2
         tp = next(r for r in result if r.item.name == "Toothpicks")
         fl = next(r for r in result if r.item.name == "Flour")
@@ -743,25 +743,25 @@ class TestCostIngredients:
         assert fl.total_cost == Decimal("1.50")
 
     def test_missing_flagged(self):
-        from wright.planning import cost_items
+        from wright.planning import calculate_item_costs
 
-        items = [BaseIngredient(name="Ghost", quantity=1, unit="each")]
-        result = cost_items(items, [])
+        items = [Ingredient(name="Ghost", quantity=1, unit="each")]
+        result = calculate_item_costs(items, [])
         assert result[0].missing_price
 
     def test_with_picker(self):
-        from wright.planning import cost_items
+        from wright.planning import calculate_item_costs
 
-        items = [BaseIngredient(name="Flour", quantity=500, unit="g")]
+        items = [Ingredient(name="Flour", quantity=500, unit="g")]
         purchases = [
-            SimplePurchase(
+            Purchase(
                 name="Flour",
                 quantity=1000,
                 unit="g",
                 price=Decimal("5.00"),
                 store="Expensive",
             ),
-            SimplePurchase(
+            Purchase(
                 name="Flour",
                 quantity=500,
                 unit="g",
@@ -769,5 +769,5 @@ class TestCostIngredients:
                 store="Cheap",
             ),
         ]
-        result = cost_items(items, purchases, picker=cheapest_picker)
+        result = calculate_item_costs(items, purchases, picker=cheapest_picker)
         assert result[0].store == "Cheap"

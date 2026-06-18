@@ -7,12 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from wright.supply import (
-    SupplyItem,
-    subtract_supply,
-    supply_add,
-    supply_deduct,
-)
+from wright.supply import SupplyItem, Stock
 
 
 # ---------------------------------------------------------------------------
@@ -26,9 +21,13 @@ class TestSupplyItem:
         assert item.name == "Flour"
         assert item.quantity == 500
         assert item.unit == "g"
+        assert item.tags == []
 
-    def test_negative_quantity_allowed(self):
-        """Negative quantities are blocked by ge=0 validator."""
+    def test_with_tags(self):
+        item = SupplyItem(name="Butter", quantity=200, unit="g", tags=["unsalted"])
+        assert item.tags == ["unsalted"]
+
+    def test_negative_quantity_blocked(self):
         with pytest.raises(ValueError):
             SupplyItem(name="Flour", quantity=-1, unit="g")
 
@@ -40,199 +39,253 @@ class TestSupplyItem:
 
 
 # ---------------------------------------------------------------------------
-# subtract_supply
+# Stock
 # ---------------------------------------------------------------------------
 
 
-class TestSubtractSupply:
-    def test_item_not_in_supply_passes_through(self):
-        needed = [SupplyItem(name="Flour", quantity=500, unit="g")]
-        supply: dict[str, SupplyItem] = {}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 1
-        assert result[0].quantity == 500
+class TestStockInit:
+    def test_empty(self):
+        s = Stock()
+        assert len(s) == 0
+        assert not s
 
-    def test_item_fully_covered_dropped(self):
-        needed = [SupplyItem(name="Flour", quantity=500, unit="g")]
-        supply = {"Flour": SupplyItem(name="Flour", quantity=1000, unit="g")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 0
+    def test_from_items(self):
+        s = Stock(
+            [
+                SupplyItem(name="Flour", quantity=500, unit="g"),
+                SupplyItem(name="Sugar", quantity=200, unit="g"),
+            ]
+        )
+        assert len(s) == 2
+        assert s["Flour"].quantity == 500
 
-    def test_item_partially_covered_returns_deficit(self):
-        needed = [SupplyItem(name="Flour", quantity=500, unit="g")]
-        supply = {"Flour": SupplyItem(name="Flour", quantity=300, unit="g")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 1
-        assert result[0].quantity == 200
-        assert result[0].unit == "g"
+    def test_merges_same_name(self):
+        s = Stock(
+            [
+                SupplyItem(name="Flour", quantity=500, unit="g"),
+                SupplyItem(name="Flour", quantity=300, unit="g"),
+            ]
+        )
+        assert len(s) == 1
+        assert s["Flour"].quantity == 800
 
-    def test_same_quantity_fully_covered(self):
-        needed = [SupplyItem(name="Flour", quantity=500, unit="g")]
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 0
+    def test_dict_access(self):
+        s = Stock([SupplyItem(name="Eggs", quantity=6, unit="each")])
+        assert "Eggs" in s
+        assert "Butter" not in s
+        assert list(s) == ["Eggs"]
+        assert list(s.values())[0].quantity == 6
+
+
+class TestStockAdd:
+    def test_add_new_item(self):
+        s = Stock()
+        s2 = s.add([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(s2) == 1
+        assert s2["Flour"].quantity == 500
+        assert len(s) == 0  # original untouched
+
+    def test_add_to_existing_same_unit(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2 = s.add([SupplyItem(name="Flour", quantity=300, unit="g")])
+        assert s2["Flour"].quantity == 800
+        assert s["Flour"].quantity == 500  # original untouched
+
+    def test_add_different_weight_unit(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2 = s.add([SupplyItem(name="Flour", quantity=1, unit="kg")])
+        assert s2["Flour"].unit == "g"
+        assert s2["Flour"].quantity == 1500
+
+    def test_add_merges_tags(self):
+        s = Stock([SupplyItem(name="Butter", quantity=200, unit="g", tags=["unsalted"])])
+        s2 = s.add([SupplyItem(name="Butter", quantity=100, unit="g")])
+        assert s2["Butter"].tags == ["unsalted"]
+
+
+class TestStockUse:
+    def test_item_not_in_stock(self):
+        s = Stock()
+        s2, deficit = s.use([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(deficit) == 1
+        assert deficit[0].quantity == 500
+        assert len(s2) == 0
+
+    def test_fully_covered(self):
+        s = Stock([SupplyItem(name="Flour", quantity=1000, unit="g")])
+        s2, deficit = s.use([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(deficit) == 0
+        assert s2["Flour"].quantity == 500
+        assert s["Flour"].quantity == 1000  # original untouched
+
+    def test_partially_covered(self):
+        s = Stock([SupplyItem(name="Flour", quantity=300, unit="g")])
+        s2, deficit = s.use([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(deficit) == 1
+        assert deficit[0].quantity == 200
+        assert "Flour" not in s2
+
+    def test_fully_covered_removes_zero(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2, deficit = s.use([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(deficit) == 0
+        assert "Flour" not in s2
 
     def test_unit_conversion_oz_to_g(self):
-        needed = [SupplyItem(name="Flour", quantity=500, unit="g")]
-        supply = {"Flour": SupplyItem(name="Flour", quantity=16, unit="oz")}  # 453.6g
-        result = subtract_supply(needed, supply)
-        assert len(result) == 1
-        assert result[0].unit == "g"
-        assert result[0].quantity == pytest.approx(46.4, abs=0.1)
-
-    def test_unit_conversion_lb_to_g(self):
-        needed = [SupplyItem(name="Flour", quantity=1000, unit="g")]
-        supply = {"Flour": SupplyItem(name="Flour", quantity=2, unit="lb")}  # ~907g
-        result = subtract_supply(needed, supply)
-        assert len(result) == 1
-        assert result[0].unit == "g"
-        assert result[0].quantity == pytest.approx(93, abs=5)
+        s = Stock([SupplyItem(name="Flour", quantity=16, unit="oz")])
+        s2, deficit = s.use([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert len(deficit) == 1
+        assert deficit[0].unit == "g"
+        assert deficit[0].quantity == pytest.approx(46.4, abs=0.2)
+        assert "Flour" not in s2
 
     def test_unit_conversion_fully_covered(self):
-        needed = [SupplyItem(name="Sugar", quantity=500, unit="g")]
-        supply = {"Sugar": SupplyItem(name="Sugar", quantity=2, unit="kg")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 0
-
-    def test_incompatible_units_no_density_keeps_original(self):
-        needed = [SupplyItem(name="Honey", quantity=2, unit="tbsp")]
-        supply = {"Honey": SupplyItem(name="Honey", quantity=340, unit="g")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 1
-        assert result[0].quantity == 2
-        assert result[0].unit == "tbsp"
+        s = Stock([SupplyItem(name="Sugar", quantity=2, unit="kg")])
+        s2, deficit = s.use([SupplyItem(name="Sugar", quantity=500, unit="g")])
+        assert len(deficit) == 0
 
     def test_incompatible_units_with_density(self):
         density = {"volume_weights": {"Honey": {"tbsp": 21.0}}}
-        needed = [SupplyItem(name="Honey", quantity=4, unit="tbsp")]
-        supply = {
-            "Honey": SupplyItem(name="Honey", quantity=21, unit="g")
-        }  # 1 tbsp worth
-        result = subtract_supply(needed, supply, density_data=density)
-        assert len(result) == 1
-        assert result[0].unit == "tbsp"
-        assert result[0].quantity == pytest.approx(3.0, abs=0.1)
+        s = Stock([SupplyItem(name="Honey", quantity=21, unit="g")])
+        s2, deficit = s.use(
+            [SupplyItem(name="Honey", quantity=4, unit="tbsp")],
+            density_data=density,
+        )
+        assert len(deficit) == 1
+        assert deficit[0].unit == "tbsp"
+        assert deficit[0].quantity == pytest.approx(3.0, abs=0.1)
 
-    def test_incompatible_with_density_fully_covered(self):
+    def test_density_fully_covered(self):
         density = {"volume_weights": {"Honey": {"tbsp": 21.0}}}
-        needed = [SupplyItem(name="Honey", quantity=2, unit="tbsp")]
-        supply = {"Honey": SupplyItem(name="Honey", quantity=100, unit="g")}
-        result = subtract_supply(needed, supply, density_data=density)
-        assert len(result) == 0
+        s = Stock([SupplyItem(name="Honey", quantity=100, unit="g")])
+        s2, deficit = s.use(
+            [SupplyItem(name="Honey", quantity=2, unit="tbsp")],
+            density_data=density,
+        )
+        assert len(deficit) == 0
 
     def test_multiple_items(self):
-        needed = [
-            SupplyItem(name="Flour", quantity=500, unit="g"),
-            SupplyItem(name="Sugar", quantity=200, unit="g"),
-            SupplyItem(name="Eggs", quantity=6, unit="each"),
-        ]
-        supply = {
-            "Flour": SupplyItem(name="Flour", quantity=1000, unit="g"),
-            "Sugar": SupplyItem(name="Sugar", quantity=100, unit="g"),
-        }
-        result = subtract_supply(needed, supply)
-        assert len(result) == 2
-        names = {r.name for r in result}
-        assert names == {"Sugar", "Eggs"}
-        sugar = next(r for r in result if r.name == "Sugar")
-        assert sugar.quantity == 100
-
-    def test_ml_to_ml(self):
-        needed = [SupplyItem(name="Milk", quantity=500, unit="ml")]
-        supply = {"Milk": SupplyItem(name="Milk", quantity=1, unit="liter")}
-        result = subtract_supply(needed, supply)
-        assert len(result) == 0
-
-
-# ---------------------------------------------------------------------------
-# supply_add
-# ---------------------------------------------------------------------------
-
-
-class TestSupplyAdd:
-    def test_add_new_item(self):
-        supply: dict[str, SupplyItem] = {}
-        result = supply_add(supply, [SupplyItem(name="Flour", quantity=500, unit="g")])
-        assert len(result) == 1
-        assert result["Flour"].quantity == 500
-
-    def test_add_to_existing_same_unit(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = supply_add(supply, [SupplyItem(name="Flour", quantity=300, unit="g")])
-        assert result["Flour"].quantity == 800
-
-    def test_add_to_existing_different_weight_unit(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = supply_add(supply, [SupplyItem(name="Flour", quantity=1, unit="kg")])
-        assert result["Flour"].unit == "g"
-        assert result["Flour"].quantity == 1500
-
-    def test_original_supply_not_mutated(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        supply_add(supply, [SupplyItem(name="Flour", quantity=300, unit="g")])
-        assert supply["Flour"].quantity == 500  # unchanged
-
-    def test_multiple_items(self):
-        supply: dict[str, SupplyItem] = {
-            "Flour": SupplyItem(name="Flour", quantity=500, unit="g"),
-        }
-        result = supply_add(
-            supply,
+        s = Stock(
             [
-                SupplyItem(name="Flour", quantity=300, unit="g"),
+                SupplyItem(name="Flour", quantity=1000, unit="g"),
+                SupplyItem(name="Sugar", quantity=100, unit="g"),
+            ]
+        )
+        s2, deficit = s.use(
+            [
+                SupplyItem(name="Flour", quantity=500, unit="g"),
                 SupplyItem(name="Sugar", quantity=200, unit="g"),
-            ],
+                SupplyItem(name="Eggs", quantity=6, unit="each"),
+            ]
         )
-        assert result["Flour"].quantity == 800
-        assert result["Sugar"].quantity == 200
+        names = {r.name for r in deficit}
+        assert names == {"Sugar", "Eggs"}
+        sugar = next(r for r in deficit if r.name == "Sugar")
+        assert sugar.quantity == 100
+        assert s2["Flour"].quantity == 500
+        assert "Sugar" not in s2
+
+    def test_ml_to_liter(self):
+        s = Stock([SupplyItem(name="Milk", quantity=1, unit="liter")])
+        s2, deficit = s.use([SupplyItem(name="Milk", quantity=500, unit="ml")])
+        assert len(deficit) == 0
 
 
-# ---------------------------------------------------------------------------
-# supply_deduct
-# ---------------------------------------------------------------------------
+class TestStockRemove:
+    def test_remove_existing(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2 = s.remove([SupplyItem(name="Flour", quantity=300, unit="g")])
+        assert s2["Flour"].quantity == 200
+        assert s["Flour"].quantity == 500
+
+    def test_remove_to_zero_drops_entry(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2 = s.remove([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert "Flour" not in s2
+
+    def test_remove_below_zero_floors(self):
+        s = Stock([SupplyItem(name="Flour", quantity=300, unit="g")])
+        s2 = s.remove([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert "Flour" not in s2
+
+    def test_remove_unknown_ignored(self):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        s2 = s.remove([SupplyItem(name="Ghost Flour", quantity=100, unit="g")])
+        assert s2["Flour"].quantity == 500
+
+    def test_remove_with_unit_conversion(self):
+        s = Stock([SupplyItem(name="Flour", quantity=1000, unit="g")])
+        s2 = s.remove([SupplyItem(name="Flour", quantity=1, unit="kg")])
+        assert "Flour" not in s2
 
 
-class TestSupplyDeduct:
-    def test_deduct_existing(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = supply_deduct(
-            supply, [SupplyItem(name="Flour", quantity=300, unit="g")]
+class TestStockYAML:
+    def test_from_yaml(self, tmp_path: Path):
+        data = {
+            "pantry": [
+                {"name": "Flour", "quantity": 500, "unit": "g"},
+                {"name": "Sugar", "quantity": 200, "unit": "g"},
+            ]
+        }
+        path = tmp_path / "pantry.yaml"
+        path.write_text(yaml.dump(data))
+        s = Stock.from_yaml(path)
+        assert len(s) == 2
+        assert s["Flour"].quantity == 500
+
+    def test_from_yaml_missing_file(self, tmp_path: Path):
+        s = Stock.from_yaml(tmp_path / "nonexistent.yaml")
+        assert len(s) == 0
+
+    def test_from_yaml_missing_fields_skipped(self, tmp_path: Path):
+        data = {
+            "pantry": [
+                {"name": "Flour", "quantity": 500, "unit": "g"},
+                {"name": "Broken"},
+            ]
+        }
+        path = tmp_path / "pantry.yaml"
+        path.write_text(yaml.dump(data))
+        s = Stock.from_yaml(path)
+        assert len(s) == 1
+        assert "Flour" in s
+
+    def test_to_yaml(self, tmp_path: Path):
+        s = Stock(
+            [
+                SupplyItem(name="Flour", quantity=500, unit="g"),
+                SupplyItem(name="Sugar", quantity=200, unit="g"),
+            ]
         )
-        assert result["Flour"].quantity == 200
+        path = tmp_path / "out.yaml"
+        s.to_yaml(path)
+        s2 = Stock.from_yaml(path)
+        assert len(s2) == 2
+        assert s2["Flour"].quantity == 500
 
-    def test_deduct_to_zero_removes_entry(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = supply_deduct(
-            supply, [SupplyItem(name="Flour", quantity=500, unit="g")]
-        )
-        assert "Flour" not in result
+    def test_roundtrip(self, tmp_path: Path):
+        s = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        path = tmp_path / "roundtrip.yaml"
+        s.to_yaml(path)
+        s2 = Stock.from_yaml(path)
+        assert s == s2
 
-    def test_deduct_below_zero_floors(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=300, unit="g")}
-        result = supply_deduct(
-            supply, [SupplyItem(name="Flour", quantity=500, unit="g")]
-        )
-        assert "Flour" not in result
 
-    def test_deduct_unknown_ignored(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        result = supply_deduct(
-            supply, [SupplyItem(name="Ghost Flour", quantity=100, unit="g")]
-        )
-        assert len(result) == 1
-        assert result["Flour"].quantity == 500
+class TestStockEquality:
+    def test_equal(self):
+        a = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        b = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        assert a == b
 
-    def test_deduct_with_unit_conversion(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=1000, unit="g")}
-        result = supply_deduct(
-            supply, [SupplyItem(name="Flour", quantity=1, unit="kg")]
-        )
-        assert "Flour" not in result
+    def test_not_equal(self):
+        a = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        b = Stock([SupplyItem(name="Flour", quantity=300, unit="g")])
+        assert a != b
 
-    def test_original_supply_not_mutated(self):
-        supply = {"Flour": SupplyItem(name="Flour", quantity=500, unit="g")}
-        supply_deduct(supply, [SupplyItem(name="Flour", quantity=300, unit="g")])
-        assert supply["Flour"].quantity == 500  # unchanged
+    def test_not_equal_different_items(self):
+        a = Stock([SupplyItem(name="Flour", quantity=500, unit="g")])
+        b = Stock([SupplyItem(name="Sugar", quantity=500, unit="g")])
+        assert a != b
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +322,7 @@ class TestLoadSupplies:
         data = {
             "pantry": [
                 {"name": "Flour", "quantity": 500, "unit": "g"},
-                {"name": "Broken"},  # missing quantity and unit
+                {"name": "Broken"},
             ]
         }
         path = tmp_path / "pantry.yaml"

@@ -8,16 +8,22 @@ at any level — from name matching to cost calculation to dietary detection.
 Add domain-specific fields without losing library compatibility:
 
 ```python
-from wright import BaseIngredient, BaseRecipe
+from wright import Material, Ingredient, Recipe
 
-class MyIngredient(BaseIngredient):
+class Lumber(Material):
+    """Construction material with building-specific fields."""
+    grade: str | None = None
+    waste_factor: float = 0.10
+
+class MyIngredient(Ingredient):
     origin: str = "local"
 
-class MyRecipe(BaseRecipe):
+class MyRecipe(Recipe):
     sale_price: Decimal | None = None
 ```
 
-Subclasses work everywhere the base classes are accepted.
+``Material`` subclasses work everywhere the base classes are accepted —
+matching, costing, planning functions all accept ``Material``.
 
 ## Matching: custom name resolution
 
@@ -42,28 +48,17 @@ cost = calculate_recipe_cost(recipe, groceries, matcher=fuzzy_matcher)
 
 ## Picking: which purchase price to use
 
-Compose multiple pickers with `chain()`:
+Compose multiple pickers with `chain()`.  See the
+[Examples guide](examples.md#custom-pickers) for the built-in picker catalog.
 
 ```python
-from wright import chain, pinned_picker, cheapest_picker, add_costs_to_shopping_list
+from wright import chain, pinned_picker, cheapest_picker, calculate_shopping_list_cost
 
-# Prefer pinned purchases, fall back to cheapest
 pinned = {"Rolled Oats": my_preferred_oats}
 picker = chain(pinned_picker(pinned), cheapest_picker)
 
-items = add_costs_to_shopping_list(shopping, groceries, picker=picker)
+items = calculate_shopping_list_cost(shopping, groceries, picker=picker)
 ```
-
-Built-in pickers:
-
-| Picker | Behavior |
-|--------|----------|
-| `pinned_picker(mapping)` | Exact lookup by name |
-| `cheapest_picker` | Lowest price per unit |
-| `recent_picker` | Most recent purchase date |
-| `first_picker` | First candidate |
-| `compatible_unit_recent_picker` | Compatible units, then most recent (default) |
-| `chain(*pickers)` | Tries each in order, returns first non-None |
 
 ## Cost conversion: custom unit handling
 
@@ -152,22 +147,6 @@ macros = calculate_recipe_macros(
     nutrition_registry=registry,
     ingredient_nutrition_lookup=usda_lookup,
 )
-```
-
-## Categorization: store layout
-
-Replace the default US grocery store categories:
-
-```python
-from wright import categorize_ingredient, CategoryRule
-
-custom_rules = [
-    CategoryRule(category="Aisle 1", priority=0, keywords=["flour", "sugar", "salt"]),
-    CategoryRule(category="Aisle 2", priority=1, keywords=["milk", "cheese", "yogurt"]),
-]
-
-aisle = categorize_ingredient("Whole Wheat Flour", rules=custom_rules)
-# → 'Aisle 1'
 ```
 
 ## Unit registry: custom units

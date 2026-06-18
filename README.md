@@ -1,79 +1,65 @@
+[![CI](https://github.com/3pm-baking/wright/actions/workflows/ci.yml/badge.svg)](https://github.com/3pm-baking/wright/actions/workflows/ci.yml)
+[![docs](https://github.com/3pm-baking/wright/actions/workflows/docs.yml/badge.svg)](https://wright.germanbakingasheville.com)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 # wright
 
-Pure Python library for production planning, cost calculation, unit conversion,
-allergen detection, nutrition analysis, supply tracking, and shopping list
-aggregation.
+[![wright](https://raw.githubusercontent.com/3pm-baking/wright/main/docs/assets/wright-logo.png)](https://wright.germanbakingasheville.com)
 
-Data-source agnostic — populate models from YAML, JSON, a database, or pure Python.
-Subclass to add domain-specific metadata.
+Pure Python library for production planning, cost calculation, shopping list
+generation, allergen detection, nutrition analysis, and supply tracking.
+
+Data-source agnostic. No I/O inside the core — models are plain Pydantic, the
+`PurchasedItem` protocol accepts anything. Subclass to add your own fields.
+
+**Domains**: food recipes, construction materials, brewing grain bills,
+manufacturing BOMs — any domain where you need to aggregate named items with
+quantities and units into a consolidated supply list with costs.
 
 ```bash
 pip install wright
 ```
 
-## What it does
+## Recipes and ingredients
 
-| Module | Purpose |
-|--------|---------|
-| `models` | Core data models: `BaseIngredient`, `BaseRecipe`, `RecipeComponent`, `ServingRange`, `NutritionInfo`, `CategoryRule` — plus the `PurchasedItem` protocol |
-| `costing` | Recursive ingredient cost calculation with unit conversion, density fallback, `product_ref` sub-recipe resolution, and top-N cost driver analysis |
-| `matching` | Pluggable ingredient-to-purchase matching with composable pickers: `cheapest_picker`, `recent_picker`, `pinned_picker`, `chain()` |
-| `planning` | Shopping list generation from production runs, cost enrichment, menu analysis, volume normalization |
-| `pricing` | Margin and multiplier pricing functions |
-| `allergens` | Allergen detection (`detect_allergens`) and dietary badge derivation (`detect_dietary_properties`) — keyword-based with override callbacks |
-| `macros` | Per-serving nutrition calculation via a central `NutritionRegistry`, with `product_ref` support |
-| `supply` | Stock tracking: `supply_add`, `supply_deduct`, `subtract_supply` with unit-aware operations |
-| `session` | `ProductionRun` and `ProductionItem` for multi-batch planning |
-| `loader` | Optional YAML helpers (`load_base_recipe`, `load_purchases`, `load_density_data`) |
-| `errors` | Typed exceptions: `IngredientNotFoundError`, `UnitConversionError`, `RecipeCostErrors` |
-| `units` | Pint registry with common units (`each`, `packet`, `pinch`) and unit classification frozensets |
+```python
+from wright import Recipe, Ingredient, RecipeComponent
 
-## Quick start
+cake = Recipe(
+    name="Lemon Cake",
+    components=[RecipeComponent(name="Batter", ingredients=[
+        Ingredient(name="Flour", quantity=300, unit="g"),
+        Ingredient(name="Butter", quantity=200, unit="g"),
+        Ingredient(name="Lemon Juice", quantity=3, unit="tbsp"),
+    ])],
+    prep_time=30, cook_time=45,
+    servings=12,
+)
 
-### Define recipes in pure Python
+# Scale it
+double_batch = cake * 2        # same as cake.size_up(2)
+half_batch = cake * 0.5
+```
+
+## Costing
 
 ```python
 from decimal import Decimal
-from wright import BaseRecipe, BaseIngredient, RecipeComponent, ServingRange
-
-recipe = BaseRecipe(
-    name="Overnight Oats",
-    components=[
-        RecipeComponent(name="Base", ingredients=[
-            BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-            BaseIngredient(name="Greek Yogurt", quantity=100, unit="g"),
-            BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
-        ])
-    ],
-    prep_time=5,
-    cook_time=0,
-    servings=1,
-)
-```
-
-### Purchase data — any object works
-
-The `PurchasedItem` protocol means you can use dataclasses, SQLModel ORM objects, or plain classes:
-
-```python
-from wright import SimplePurchase
+from wright import Purchase, calculate_recipe_cost
 
 groceries = [
-    SimplePurchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
-    SimplePurchase(name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.99")),
+    Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.99")),
+    Purchase(name="Butter", quantity=500, unit="g", price=Decimal("5.49")),
+    Purchase(name="Lemon Juice", quantity=250, unit="ml", price=Decimal("1.99")),
 ]
+
+cost = calculate_recipe_cost(cake, groceries)
+print(cost.total_cost_range.midpoint)         # → 3.10
+print(cost.cost_per_serving_range.midpoint)   # → 0.26
 ```
 
-### Calculate costs
-
-```python
-from wright import calculate_recipe_cost
-
-cost = calculate_recipe_cost(recipe, groceries)
-print(f"Total: ${cost.total_cost_range.midpoint:.2f}")
-```
-
-### Plan a production run
+## Planning
 
 ```python
 from datetime import date
@@ -81,52 +67,189 @@ from wright import ProductionRun, ProductionItem, generate_shopping_list
 
 session = ProductionRun(
     date=date(2026, 6, 20),
-    production=[ProductionItem(recipe="Overnight Oats", quantity=3)],
+    production=[ProductionItem(assembly="Lemon Cake", quantity=3)],
     target_dates=[date(2026, 6, 20)],
 )
-recipes = {"Overnight Oats": recipe}
-shopping = generate_shopping_list(session, recipes)
+
+shopping = generate_shopping_list(session, [cake])
+
+for group in shopping.groups:
+    for item in group.items:
+        print(f"{item.name}: {item.quantity} {item.unit}")
 ```
 
-### Detect allergens and dietary badges
+Enrich with costs, then analyze:
+
+```python
+from wright import calculate_shopping_list_cost, analyze_menu
+
+items = calculate_shopping_list_cost(shopping, groceries)
+menu = analyze_menu(
+    [ProductionItem(assembly="Lemon Cake", quantity=3)],
+    [cake], groceries,
+)
+print(menu.total_cost)
+for item in menu.top_drivers:
+    print(f"  {item.item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
+```
+
+## Allergens and dietary badges
 
 ```python
 from wright import detect_allergens, detect_dietary_properties
 
-allergy_map = {"milk": "Milk", "wheat": "Wheat", "egg": "Egg"}
+allergens = detect_allergens(cake, allergy_map={"milk": "Dairy", "wheat": "Wheat"})
+# → ["Dairy", "Gluten", "Eggs"]
 
-allergens = detect_allergens(recipe, allergy_map)
-# → ["Milk"] or []
-
-badges = detect_dietary_properties(recipe)
-# → ["VEGAN"] or ["GLUTEN-FREE"] or []
+badges = detect_dietary_properties(cake)
+# → ["VEGAN", "DAIRY-FREE", "GLUTEN-FREE"]
 ```
 
-### Inject custom knowledge
-
-Every decision point is injectable:
+Supplement keyword detection with purchase data:
 
 ```python
-from wright import chain, pinned_picker, cheapest_picker, detect_dietary_properties
-
-# Choose which purchase price to use
-picker = chain(pinned_picker({"Rolled Oats": my_preferred_oats}), cheapest_picker)
-
-# Authoritative dietary properties from your own data
-def my_properties(ingredient):
-    if ingredient.name == "Protein Powder":
-        return frozenset({"vegan", "gluten-free"})
-    return frozenset()  # fall through to keyword matching
-
-badges = detect_dietary_properties(recipe, ingredient_properties=my_properties)
+badges = detect_dietary_properties(cake, ingredient_properties=lambda ing: (
+    frozenset({"vegan", "gluten-free"}) if "gf" in ing.require_tags else frozenset()
+))
 ```
 
-## Design principles
+## Nutrition
 
-- **No I/O.** Core functions take data in, return data out. No files, no databases, no network.
-- **Protocol-based.** `PurchasedItem` is a protocol — any class with the right attributes works.
-- **Pluggable.** Matchers, pickers, converters, normalizers, and callbacks are injected at every decision point.
-- **Subclass-friendly.** Pydantic models are designed for inheritance. Add domain fields without monkey-patching.
+```python
+from wright import calculate_recipe_macros, NutritionInfo, FoodRecord
+
+registry = [
+    FoodRecord(ingredient="Flour", nutrition=NutritionInfo(protein_g=10, carbs_g=76, fat_g=1, kcal=364)),
+    FoodRecord(ingredient="Butter", nutrition=NutritionInfo(protein_g=0.9, carbs_g=0.1, fat_g=81, kcal=717)),
+]
+
+macros = calculate_recipe_macros(cake, nutrition_registry=registry)
+print(macros.per_serving.kcal)
+```
+
+## Supply tracking
+
+```python
+from wright import Stock, SupplyItem
+
+stock = Stock([SupplyItem(name="Flour", quantity=2000, unit="g")])
+stock, deficit = stock.use([SupplyItem(name="Flour", quantity=900, unit="g")])
+# deficit → []  — stock covers it
+```
+
+## Pricing
+
+```python
+from wright import margin_price, multiplier_price
+
+margin_price(Decimal("2.00"), 0.67)     # → 6.06  (67% margin)
+multiplier_price(Decimal("2.00"), 3)    # → 6.00  (3× cost)
+```
+
+## Everything is injectable
+
+```python
+from wright import chain, pinned_picker, cheapest_picker
+
+# Compose pickers: pinned first, then cheapest
+picker = chain(pinned_picker({"Butter": my_brand}), cheapest_picker)
+items = calculate_shopping_list_cost(shopping, groceries, picker=picker)
+
+# Custom volume display for metric users
+shopping = generate_shopping_list(session, [cake],
+    display_normalizer=lambda q, u: ...,
+)
+
+# Custom name matcher
+cost = calculate_recipe_cost(cake, groceries,
+    matcher=my_fuzzy_matcher,
+)
+```
+
+## Non-food domains
+
+``Assembly``, ``Component``, and ``Material`` work for construction, brewing,
+manufacturing, or any bill-of-materials domain. No dummy food fields needed:
+
+```python
+from datetime import date
+from decimal import Decimal
+from wright import (
+    Assembly, Component, ProductionItem, ProductionRun, Purchase,
+    generate_shopping_list, calculate_item_costs,
+)
+
+# ── Two home projects ──────────────────────────────────────────────────────
+
+deck = Assembly(name="Backyard Deck", components=[
+    Component(name="Framing", materials=[
+        Material(name="2x6 Pressure-Treated", quantity=48, unit="ft"),
+        Material(name="Joist Hangers", quantity=16, unit="each"),
+    ]),
+    Component(name="Surface", materials=[
+        Material(name='5/4" Cedar Decking', quantity=160, unit="ft"),
+        Material(name='2" Stainless Screws', quantity=600, unit="each"),
+    ]),
+])
+
+bed = Assembly(name="Raised Garden Bed", components=[
+    Component(name="Frame", materials=[
+        Material(name="2x8 Cedar", quantity=24, unit="ft"),
+        Material(name='3" Deck Screws', quantity=64, unit="each"),
+    ]),
+])
+
+# ── Hardware store prices ──────────────────────────────────────────────────
+
+prices = [
+    Purchase(name="2x6 Pressure-Treated", quantity=8, unit="ft",
+             price=Decimal("12.97"), store="Home Depot"),
+    Purchase(name='2" Stainless Screws', quantity=100, unit="each",
+             price=Decimal("3.49"), store="Home Depot"),
+]
+
+# ── Cost one project ───────────────────────────────────────────────────────
+
+deck_costs = calculate_item_costs(deck.all_materials, prices)
+total = sum(c.total_cost for c in deck_costs if c.total_cost is not None)
+print(f"Deck materials: ${total}")
+
+# ── Plan a weekend build session ───────────────────────────────────────────
+
+plan = ProductionRun(
+    date=date(2026, 6, 20),
+    production=[
+        ProductionItem(assembly="Backyard Deck", quantity=1),
+        ProductionItem(assembly="Raised Garden Bed", quantity=1),
+    ],
+    target_dates=[date(2026, 6, 20)],
+)
+
+shopping = generate_shopping_list(plan, [deck, bed])
+for item in shopping.all_items:
+    print(f"{item.name}: {item.quantity:.0f} {item.unit}")
+
+# ── Cross-reference with home inventory ───────────────────────────────────
+
+from wright import Stock, SupplyItem
+
+# What's already in the garage
+garage_stock = Stock([
+    SupplyItem(name='2" Stainless Screws', quantity=100, unit="each"),
+    SupplyItem(name="Joist Hangers", quantity=8, unit="each"),
+])
+
+# Deduct stock — get only what you still need to buy
+garage_stock, buy_list = garage_stock.use(deck.all_materials)
+for item in buy_list:
+    print(f"Buy: {item.name} — {item.quantity:.0f} {item.unit}")
+# → Buy: 2x6 Pressure-Treated — 48 ft
+# → Buy: Joist Hangers — 8 each          (16 needed − 8 on hand)
+# → Buy: 5/4" Cedar Decking — 160 ft
+# → Buy: 2" Stainless Screws — 500 each  (600 needed − 100 on hand)
+```
+
+The same ``calculate_ingredient_cost()`` and ``Stock`` work across all domains.
 
 ## Requirements
 
@@ -135,3 +258,14 @@ Python 3.11+. Dependencies: `pydantic>=2.8.2`, `pint>=0.25`, `pyyaml>=6.0.3`.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+<br>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/3pm-baking/wright/main/docs/assets/logo.png" width="120" alt="3pm German Baking">
+</p>
+<p align="center">
+  <a href="https://github.com/3pm-baking/wright">wright</a> is created and maintained by
+  <a href="https://germanbakingasheville.com">3pm German Baking, LLC</a>
+  a farmers market bakery in Asheville, NC.
+</p>

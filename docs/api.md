@@ -5,16 +5,19 @@
 ::: wright.models
     options:
       members:
-        - BaseIngredient
-        - BaseRecipe
+        - Assembly
+        - Material
+        - Component
+        - Ingredient
+        - Recipe
         - RecipeComponent
         - ServingRange
+        - Servings
         - PurchasedItem
-        - SimplePurchase
+        - Purchase
         - NutritionInfo
         - MacroPerServing
         - RecipeMacros
-        - NutritionRegistry
         - FoodRecord
         - PriceRange
         - IngredientCost
@@ -22,7 +25,8 @@
         - CategoryRule
         - categorize_ingredient
         - DEFAULT_CATEGORY_RULES
-        - Servings
+        - BaseIngredient
+        - BaseRecipe
 
 ## `wright.costing`
 
@@ -34,7 +38,7 @@
         - calculate_ingredient_cost_range
         - convert_with_density
         - get_top_cost_drivers
-        - ingredient_to_grams
+        - convert_ingredient_to_grams
 
 ## `wright.matching`
 
@@ -58,18 +62,17 @@
 ::: wright.planning
     options:
       members:
-        - ShoppingItem
         - IngredientGroup
         - ShoppingList
         - ShoppingItemWithCost
         - MenuAnalysis
         - generate_shopping_list
-        - add_costs_to_shopping_list
+        - calculate_shopping_list_cost
         - analyze_menu
         - group_shopping_items
-        - normalize_volume_for_grocery
+        - normalize_volume_us
         - normalize_volume_to_ml
-        - cost_items
+        - calculate_item_costs
         - estimate_total_items
         - format_quantity
 
@@ -109,10 +112,7 @@
     options:
       members:
         - SupplyItem
-        - Supply
-        - subtract_supply
-        - supply_add
-        - supply_deduct
+        - Stock
 
 ## `wright.session`
 
@@ -121,8 +121,7 @@
       members:
         - ProductionItem
         - ProductionRun
-        - combine_production_runs
-        - recipe_name_to_filename
+        - convert_recipe_name_to_filename
 
 ## `wright.errors`
 

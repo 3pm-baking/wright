@@ -30,5 +30,8 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check .
 
-      - name: Run tests
-        run: uv run python -m pytest -v --tb=short
+      - name: Type check (ty)
+        run: uv run ty check src/wright
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov=wright --cov-report=term-missing -v --tb=short

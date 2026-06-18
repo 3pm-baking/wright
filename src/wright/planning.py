@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date as DateType
 from decimal import Decimal
-from typing import Callable, Iterable, Mapping
 
 from pydantic import BaseModel, Field
 
 from wright.costing import (
     calculate_ingredient_cost,
-    ingredient_to_grams,
+    convert_ingredient_to_grams,
 )
 from wright.errors import UnitConversionError
 from wright.matching import (
@@ -22,33 +22,47 @@ from wright.matching import (
     find_matching_purchases,
 )
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Assembly,
+    Ingredient,
+    Material,
     PurchasedItem,
+    Recipe,
     categorize_ingredient,
 )
 from wright.session import ProductionItem, ProductionRun
+from wright.supply import SupplyItem
 from wright.units import VOLUME_UNITS, are_compatible, parse_quantity, ureg
-
 
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
 
 
-def _apply_equivalent(ingredient: BaseIngredient) -> tuple[float, str]:
+def _ensure_mapping(
+    assemblies: Iterable[Assembly],
+) -> Mapping[str, Assembly]:
+    """Build a ``{name: assembly}`` map keyed by ``.name``.
+
+    Handles ``Mapping`` inputs transparently (iterates values, not keys).
+    """
+    if isinstance(assemblies, Mapping):
+        assemblies = list(assemblies.values())  # type: ignore[assignment]  # ty:ignore[invalid-assignment]
+    return {a.name: a for a in assemblies}
+
+
+def _apply_equivalent(material: Material) -> tuple[float, str]:
     """Return ``(quantity, unit)``, applying equivalent conversion if set.
 
-    An ingredient like ``{quantity: 1, unit: "packet", equivalent_quantity: 37,
-    equivalent_unit: "g"}`` becomes ``(37, "g")`` so it can be aggregated with
-    other gram-quantity entries of the same ingredient.
+    A material like ``{quantity: 1, unit: "box", equivalent_quantity: 500,
+    equivalent_unit: "each"}`` becomes ``(500, "each")`` so it can be
+    aggregated with other each-quantity entries of the same item.
     """
     if (
-        ingredient.equivalent_quantity is not None
-        and ingredient.equivalent_unit is not None
+        material.equivalent_quantity is not None
+        and material.equivalent_unit is not None
     ):
-        return ingredient.equivalent_quantity, ingredient.equivalent_unit
-    return ingredient.quantity, ingredient.unit
+        return material.equivalent_quantity, material.equivalent_unit
+    return material.quantity, material.unit
 
 
 def format_quantity(quantity: float) -> str:
@@ -83,20 +97,11 @@ def normalize_volume_to_ml(
 # ---------------------------------------------------------------------------
 
 
-class ShoppingItem(BaseModel):
-    """A consolidated ingredient needed for shopping."""
-
-    name: str = Field(..., description="Ingredient name")
-    total_quantity: float = Field(..., description="Total quantity needed")
-    unit: str = Field(..., description="Unit of measurement")
-    tags: list[str] = Field(default_factory=list, description="Required tags")
-
-
 class IngredientGroup(BaseModel):
     """A group of related shopping items."""
 
     group_name: str = Field(..., description="Display name for the group")
-    items: list[ShoppingItem] = Field(..., description="Shopping items in this group")
+    items: list[SupplyItem] = Field(..., description="Items in this group")
 
 
 class ShoppingList(BaseModel):
@@ -110,8 +115,8 @@ class ShoppingList(BaseModel):
     groups: list[IngredientGroup] = Field(..., description="Grouped ingredients")
 
     @property
-    def all_items(self) -> list[ShoppingItem]:
-        """Get all shopping items across all groups."""
+    def all_items(self) -> list[SupplyItem]:
+        """Get all items across all groups."""
         return [item for group in self.groups for item in group.items]
 
 
@@ -122,30 +127,32 @@ class ShoppingList(BaseModel):
 
 def estimate_total_items(
     session: ProductionRun,
-    recipes: Mapping[str, BaseRecipe],
+    assemblies: Iterable[Assembly],
 ) -> int:
     """Estimate the total number of items a production run will produce.
 
-    Uses the midpoint of each recipe's serving range multiplied by batch
-    quantity.  Recipes without servings contribute 0.
+    Uses the midpoint of each assembly's serving range multiplied by batch
+    quantity.  Assemblies without servings contribute 0.
 
     Args:
         session: The production run.
-        recipes: Mapping of recipe name → ``BaseRecipe``.
+        assemblies: Assemblies keyed by ``.name`` (list, tuple, etc.).
 
     Returns:
         Estimated total item count (rounded to nearest integer).
     """
+    asm_map = _ensure_mapping(assemblies)
     total: float = 0.0
     for item in session.production:
-        recipe = recipes.get(item.recipe)
-        if recipe is None:
+        assembly = asm_map.get(item.assembly)
+        if assembly is None:
             continue
-        if recipe.servings is None:
-            continue
-        min_s, max_s = recipe._servings_bounds()
-        midpoint = (min_s + max_s) / 2.0
-        total += midpoint * item.quantity
+        if isinstance(assembly, Recipe):
+            if assembly.servings is None:
+                continue
+            min_s, max_s = assembly._servings_bounds()
+            midpoint = (min_s + max_s) / 2.0
+            total += midpoint * item.quantity
 
     return round(total)
 
@@ -156,56 +163,63 @@ def estimate_total_items(
 
 
 def _expand_ingredient(
-    ingredient: BaseIngredient,
-    recipes: Mapping[str, BaseRecipe],
+    material: Material,
+    assemblies: Mapping[str, Assembly],
     visited: frozenset[str],
-) -> list[BaseIngredient]:
-    """Recursively expand a product_ref ingredient into its sub-ingredients.
+) -> list[Material]:
+    """Recursively expand a product_ref item into its sub-materials.
 
-    Scales sub-recipe ingredients by ``grams_used / yield`` so the
-    shopping list reflects the actual quantities needed.
+    Scales sub-assembly materials by ``grams_used / yield`` when the
+    referenced assembly is a :class:`Recipe` with ``net_weight_grams``.
+    For non-``Recipe`` assemblies, product_ref expansion is skipped
+    (returned as-is).
+
     Cycle detection via *visited* prevents infinite recursion.
     """
-    if ingredient.product_ref is None:
-        return [ingredient]
+    if material.product_ref is None:
+        return [material]
 
-    ref_name = ingredient.product_ref
+    ref_name = material.product_ref
     if ref_name in visited:
-        return [ingredient]
+        return [material]
 
-    sub_recipe = recipes.get(ref_name)
-    if sub_recipe is None:
-        return [ingredient]
+    sub_assembly = assemblies.get(ref_name)
+    if sub_assembly is None:
+        return [material]
 
-    if sub_recipe.net_weight_grams is None or sub_recipe.net_weight_grams <= 0:
-        return [ingredient]
+    # Only Recipes have net_weight_grams for proportional scaling
+    if not isinstance(sub_assembly, Recipe):
+        return [material]
+
+    if sub_assembly.net_weight_grams is None or sub_assembly.net_weight_grams <= 0:
+        return [material]
 
     try:
-        grams_used = ingredient_to_grams(ingredient)
+        grams_used = convert_ingredient_to_grams(material)
     except UnitConversionError:
-        return [ingredient]
+        return [material]
 
-    ratio = grams_used / sub_recipe.net_weight_grams
+    ratio = grams_used / sub_assembly.net_weight_grams
 
-    result: list[BaseIngredient] = []
-    for sub_ing in sub_recipe.all_ingredients:
+    result: list[Material] = []
+    for sub_ing in sub_assembly.all_ingredients:
         if sub_ing.byproduct or sub_ing.quantity == 0:
             continue
         scaled = sub_ing.scale(ratio)
-        result.extend(_expand_ingredient(scaled, recipes, visited | {ref_name}))
+        result.extend(_expand_ingredient(scaled, assemblies, visited | {ref_name}))
 
     return result
 
 
 def _expand_all_ingredients(
-    ingredients: list[BaseIngredient],
-    recipes: Mapping[str, BaseRecipe],
+    materials: list[Material],
+    assemblies: Mapping[str, Assembly],
     visited: frozenset[str],
-) -> list[BaseIngredient]:
-    """Expand all product_ref ingredients in a flat list."""
-    result: list[BaseIngredient] = []
-    for ing in ingredients:
-        result.extend(_expand_ingredient(ing, recipes, visited))
+) -> list[Material]:
+    """Expand all product_ref items in a flat list."""
+    result: list[Material] = []
+    for mat in materials:
+        result.extend(_expand_ingredient(mat, assemblies, visited))
     return result
 
 
@@ -216,38 +230,41 @@ def _expand_all_ingredients(
 
 def generate_shopping_list(
     session: ProductionRun,
-    recipes: Mapping[str, BaseRecipe],
+    assemblies: Iterable[Assembly],
     *,
     volume_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
     display_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
 ) -> ShoppingList:
     """Generate a consolidated shopping list from a production run.
 
-    Aggregates ingredients across all recipes, normalizing volume units
+    Aggregates materials across all assemblies, normalizing volume units
     to ml for consistent accumulation.  Byproduct and zero-quantity
-    ingredients are excluded.
+    items are excluded.
 
     Args:
         session: The production run to generate a list for.
-        recipes: Mapping of recipe name → ``BaseRecipe``.  Must contain
-            every recipe referenced by the session's production items.
+        assemblies: Assemblies keyed by ``.name`` (list, tuple, etc.).
+            Must contain every assembly referenced by the session's
+            production items.
         volume_normalizer: Optional function ``(quantity, unit) -> (quantity, unit)``
-            called on each ingredient to normalize units for accumulation.
+            called on each material to normalize units for accumulation.
             Defaults to :func:`normalize_volume_to_ml` (converts volume
             units to ml).
         display_normalizer: Optional function ``(quantity, unit) -> (quantity, unit)``
             called to format accumulated quantities for display.
-            Defaults to :func:`normalize_volume_for_grocery` (gallons,
+            Defaults to :func:`normalize_volume_us` (gallons,
             quarts, floz, tbsp, tsp hierarchy).
 
     Returns:
-        ``ShoppingList`` with grouped ingredients.
+        ``ShoppingList`` with grouped items.
 
     Raises:
-        KeyError: If a production item references a recipe name not in
-            the *recipes* mapping (wrapped as ``RecipeLoadError`` in the
-            full application).
+        KeyError: If a production item references an assembly name not in
+            the *assemblies* (wrapped as ``RecipeLoadError`` in the full
+            application).
     """
+    asm_map = _ensure_mapping(assemblies)
+
     # (name, tags_tuple) → accumulated data
     ingredient_totals: dict[
         tuple[str, tuple[str, ...]],
@@ -257,24 +274,24 @@ def generate_shopping_list(
     production_summary: list[str] = []
 
     for production_item in session.production:
-        recipe = recipes[production_item.recipe]
-        scaled_recipe = recipe.size_up(production_item.quantity)
+        assembly = asm_map[production_item.assembly]
+        scaled = assembly.size_up(production_item.quantity)
         production_summary.append(
-            f"{format_quantity(production_item.quantity)}× {recipe.name}"
+            f"{format_quantity(production_item.quantity)}× {assembly.name}"
         )
 
-        for ingredient in _expand_all_ingredients(
-            scaled_recipe.all_ingredients, recipes, visited=frozenset()
+        for material in _expand_all_ingredients(
+            scaled.all_materials, asm_map, visited=frozenset()
         ):
-            if ingredient.byproduct:
+            if material.byproduct:
                 continue
 
             key = (
-                ingredient.name,
-                tuple(sorted(ingredient.require_tags)),
+                material.name,
+                tuple(sorted(material.require_tags)),
             )
 
-            raw_qty, raw_unit = _apply_equivalent(ingredient)
+            raw_qty, raw_unit = _apply_equivalent(material)
             qty_in, unit_in = (volume_normalizer or normalize_volume_to_ml)(
                 raw_qty, raw_unit
             )
@@ -300,18 +317,18 @@ def generate_shopping_list(
                 else:
                     ingredient_totals[key]["quantity"] = existing_quantity + qty_in
 
-            ingredient_totals[key]["tags"].update(ingredient.require_tags)
+            ingredient_totals[key]["tags"].update(material.require_tags)
 
-    shopping_items: list[ShoppingItem] = []
-    for (name, tag_tuple), details in ingredient_totals.items():
-        display_qty, display_unit = (
-            display_normalizer or normalize_volume_for_grocery
-        )(details["quantity"], details["unit"])
+    shopping_items: list[SupplyItem] = []
+    for (name, _tag_tuple), details in ingredient_totals.items():
+        display_qty, display_unit = (display_normalizer or normalize_volume_us)(
+            details["quantity"], details["unit"]
+        )
 
         shopping_items.append(
-            ShoppingItem(
+            SupplyItem(
                 name=name,
-                total_quantity=round(display_qty, 2),
+                quantity=round(display_qty, 2),
                 unit=display_unit,
                 tags=list(details["tags"]),
             )
@@ -328,15 +345,15 @@ def generate_shopping_list(
 
 
 def group_shopping_items(
-    items: list[ShoppingItem],
+    items: list[SupplyItem],
     *,
     kitchen_items: frozenset[str] | None = None,
     category_rules: list | None = None,
 ) -> list[IngredientGroup]:
-    """Group shopping items by ingredient category.
+    """Group items by ingredient category.
 
     Args:
-        items: Shopping items to group.
+        items: Items to group.
         kitchen_items: Item names to exclude (e.g. ``{"water"}``).
             Defaults to an empty set.
         category_rules: Optional categorization rules for
@@ -349,7 +366,7 @@ def group_shopping_items(
     if kitchen_items is None:
         kitchen_items = frozenset()
 
-    groups: dict[str, list[ShoppingItem]] = defaultdict(list)
+    groups: dict[str, list[SupplyItem]] = defaultdict(list)
 
     for item in items:
         if item.name.lower() in kitchen_items:
@@ -365,7 +382,7 @@ def group_shopping_items(
     return sorted(sorted_groups, key=lambda x: x.group_name)
 
 
-def normalize_volume_for_grocery(
+def normalize_volume_us(
     quantity: float,
     unit: str,
 ) -> tuple[float, str]:
@@ -414,9 +431,9 @@ def normalize_volume_for_grocery(
 
 @dataclass
 class ShoppingItemWithCost:
-    """Shopping item enriched with pricing information."""
+    """Item enriched with pricing information."""
 
-    item: ShoppingItem
+    item: SupplyItem
     price_per_unit: Decimal | None
     """Price per display unit (e.g. per 100g, per each)."""
 
@@ -424,7 +441,7 @@ class ShoppingItemWithCost:
     """Display unit for the price (e.g. ``'100g'``, ``'each'``)."""
 
     total_cost: Decimal | None
-    """Total cost for this shopping item."""
+    """Total cost for this item."""
 
     store: str | None
     """Store with the best / most recent price."""
@@ -437,7 +454,7 @@ class ShoppingItemWithCost:
 
 
 def _default_price_display(
-    item: ShoppingItem, grocery: PurchasedItem
+    item: SupplyItem, purchase: PurchasedItem
 ) -> tuple[Decimal, str]:
     """Return ``(price_per_unit, display_unit)`` for a shopping item.
 
@@ -446,41 +463,108 @@ def _default_price_display(
     """
     if item.unit.lower() in {"g", "gram", "grams", "ml", "milliliter", "milliliters"}:
         try:
-            groc_qty_in_item_unit = (
-                parse_quantity(grocery.quantity, grocery.unit).to(item.unit).magnitude
+            purchase_in_item = (
+                parse_quantity(purchase.quantity, purchase.unit).to(item.unit).magnitude
             )
-            price_per_base = grocery.price / Decimal(str(groc_qty_in_item_unit))
+            price_per_base = purchase.price / Decimal(str(purchase_in_item))
             display_unit = (
                 "100g" if item.unit.lower() in {"g", "gram", "grams"} else "100ml"
             )
             return (price_per_base * Decimal("100"), display_unit)
         except Exception:
             pass
-    return (grocery.price / Decimal(str(grocery.quantity)), item.unit)
+    return (purchase.price / Decimal(str(purchase.quantity)), item.unit)
 
 
-def add_costs_to_shopping_list(
+def _cost_one_item(
+    material: Material,
+    purchases: Iterable[PurchasedItem],
+    *,
+    density_data: dict,
+    matcher: ItemMatcher,
+    picker: ItemPicker | None,
+    price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]],
+) -> ShoppingItemWithCost:
+    """Cost a single material against purchases — shared by both cost functions."""
+    supply_item = SupplyItem(
+        name=material.name,
+        quantity=material.quantity,
+        unit=material.unit,
+        tags=material.require_tags,
+    )
+
+    try:
+        matching = matcher(material, purchases)
+        selected: PurchasedItem | None = None
+
+        if matching:
+            if picker is not None:
+                selected = picker(material, matching)
+            else:
+                selected = compatible_unit_recent_picker(material, matching)
+
+        if selected is None:
+            return ShoppingItemWithCost(
+                item=supply_item,
+                price_per_unit=None,
+                price_unit=material.unit,
+                total_cost=None,
+                store=None,
+                purchase_date=None,
+                missing_price=True,
+            )
+
+        cost = calculate_ingredient_cost(
+            material, selected, density_data=density_data
+        )
+
+        price_per_unit, display_unit = price_display_fn(supply_item, selected)
+
+        return ShoppingItemWithCost(
+            item=supply_item,
+            price_per_unit=price_per_unit,
+            price_unit=display_unit,
+            total_cost=cost,
+            store=selected.store,
+            purchase_date=getattr(selected, "purchased_date", None),
+            missing_price=False,
+        )
+
+    except Exception:
+        return ShoppingItemWithCost(
+            item=supply_item,
+            price_per_unit=None,
+            price_unit=material.unit,
+            total_cost=None,
+            store=None,
+            purchase_date=None,
+            missing_price=True,
+        )
+
+
+def calculate_shopping_list_cost(
     shopping_list: ShoppingList,
-    groceries: Iterable[PurchasedItem],
+    purchases: Iterable[PurchasedItem],
     *,
     density_data: dict | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
-    price_display_fn: Callable[[ShoppingItem, PurchasedItem], tuple[Decimal, str]]
+    price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]]
     | None = None,
 ) -> list[ShoppingItemWithCost]:
-    """Enrich each shopping item with cost information.
+    """Enrich each item with cost information.
 
     For each item:
     1. Convert to an ingredient for matching.
-    2. Find matching grocery items via *matcher*.
-    3. Select one grocery via *picker* (default: :func:`compatible_unit_recent_picker`).
+    2. Find matching purchase items via *matcher*.
+    3. Select one purchase via *picker*
+       (default: :func:`compatible_unit_recent_picker`).
     4. Calculate cost using unit conversion.
     5. Compute a readable price per display unit via *price_display_fn*.
 
     Args:
         shopping_list: Generated shopping list.
-        groceries: Available grocery price data.
+        purchases: Available purchase price data.
         density_data: Optional density data for unit conversion.
         matcher: Optional custom matching function.  Defaults to
             :func:`find_matching_purchases`.
@@ -488,107 +572,48 @@ def add_costs_to_shopping_list(
             :func:`compatible_unit_recent_picker`.  Use :func:`chain`
             to compose.
         price_display_fn: Optional callback
-            ``(item, grocery) -> (price_per_unit, display_unit)``
+            ``(item, purchase) -> (price_per_unit, display_unit)``
             for customizing unit price display.  Defaults to per-100g for
             metric weight units, per-100ml for metric volume units,
             per-package otherwise.
 
     Returns:
-        List of ``ShoppingItemWithCost``, one per shopping item.
+        List of ``ShoppingItemWithCost``, one per item.
     """
-    density_data = density_data or {}
-    _match = matcher or find_matching_purchases
-    items_with_costs: list[ShoppingItemWithCost] = []
-
-    for shopping_item in shopping_list.all_items:
-        ingredient = BaseIngredient(
-            name=shopping_item.name,
-            quantity=shopping_item.total_quantity,
-            unit=shopping_item.unit,
-            require_tags=shopping_item.tags,
+    return [
+        _cost_one_item(
+            Ingredient(
+                name=si.name,
+                quantity=si.quantity,
+                unit=si.unit,
+                require_tags=si.tags,
+            ),
+            purchases,
+            density_data=density_data or {},
+            matcher=matcher or find_matching_purchases,
+            picker=picker,
+            price_display_fn=price_display_fn or _default_price_display,
         )
-
-        try:
-            matching = _match(ingredient, groceries)
-            latest_grocery: PurchasedItem | None = None
-
-            if matching:
-                if picker is not None:
-                    latest_grocery = picker(ingredient, matching)
-                else:
-                    latest_grocery = compatible_unit_recent_picker(ingredient, matching)
-
-            if latest_grocery is None:
-                items_with_costs.append(
-                    ShoppingItemWithCost(
-                        item=shopping_item,
-                        price_per_unit=None,
-                        price_unit=shopping_item.unit,
-                        total_cost=None,
-                        store=None,
-                        purchase_date=None,
-                        missing_price=True,
-                    )
-                )
-                continue
-
-            cost = calculate_ingredient_cost(
-                ingredient, latest_grocery, density_data=density_data
-            )
-
-            price_per_unit, display_unit = (price_display_fn or _default_price_display)(
-                shopping_item, latest_grocery
-            )
-
-            items_with_costs.append(
-                ShoppingItemWithCost(
-                    item=shopping_item,
-                    price_per_unit=price_per_unit,
-                    price_unit=display_unit,
-                    total_cost=cost,
-                    store=latest_grocery.store,
-                    purchase_date=getattr(latest_grocery, "purchased_date", None),
-                    missing_price=False,
-                )
-            )
-
-        except Exception:
-            items_with_costs.append(
-                ShoppingItemWithCost(
-                    item=shopping_item,
-                    price_per_unit=None,
-                    price_unit=shopping_item.unit,
-                    total_cost=None,
-                    store=None,
-                    purchase_date=None,
-                    missing_price=True,
-                )
-            )
-
-    return items_with_costs
+        for si in shopping_list.all_items
+    ]
 
 
-# ---------------------------------------------------------------------------
-# Standalone item costing (supplies, tools, etc.)
-# ---------------------------------------------------------------------------
-
-
-def cost_items(
-    items: list[BaseIngredient],
+def calculate_item_costs(
+    items: Sequence[Material],
     purchases: Iterable[PurchasedItem],
     *,
     density_data: dict | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
 ) -> list[ShoppingItemWithCost]:
-    """Cost arbitrary items — food, supplies, tools, etc.
+    """Cost arbitrary items — food, construction materials, tools, etc.
 
     Reuses the same matching, picking, and costing pipeline as
-    :func:`add_costs_to_shopping_list`, but works on a flat list of
-    ``BaseIngredient`` instead of a ``ShoppingList``.
+    :func:`calculate_shopping_list_cost`, but works on a flat list of
+    ``Material`` instead of a ``ShoppingList``.
 
     Args:
-        items: Items to cost (recipe ingredients, supplies, etc.).
+        items: Items to cost (recipe ingredients, lumber, hardware, etc.).
         purchases: Available purchase price data.
         density_data: Optional density data for unit conversion.
         matcher: Optional custom matching function.
@@ -597,107 +622,17 @@ def cost_items(
     Returns:
         List of ``ShoppingItemWithCost``, one per input item.
     """
-    density_data = density_data or {}
-    _match = matcher or find_matching_purchases
-    result: list[ShoppingItemWithCost] = []
-
-    for item in items:
-        try:
-            matching = _match(item, purchases)
-            latest: PurchasedItem | None = None
-
-            if matching:
-                if picker is not None:
-                    latest = picker(item, matching)
-                else:
-                    latest = compatible_unit_recent_picker(item, matching)
-
-            if latest is None:
-                result.append(
-                    ShoppingItemWithCost(
-                        item=ShoppingItem(
-                            name=item.name,
-                            total_quantity=item.quantity,
-                            unit=item.unit,
-                            tags=item.require_tags,
-                        ),
-                        price_per_unit=None,
-                        price_unit=item.unit,
-                        total_cost=None,
-                        store=None,
-                        purchase_date=None,
-                        missing_price=True,
-                    )
-                )
-                continue
-
-            cost = calculate_ingredient_cost(item, latest, density_data=density_data)
-
-            # Price per display unit
-            if item.unit.lower() in {
-                "g",
-                "gram",
-                "grams",
-                "ml",
-                "milliliter",
-                "milliliters",
-            }:
-                try:
-                    qty_in_item_units = (
-                        parse_quantity(latest.quantity, latest.unit)
-                        .to(item.unit)
-                        .magnitude
-                    )
-                    price_per_base = latest.price / Decimal(str(qty_in_item_units))
-                    ppu = price_per_base * Decimal("100")
-                    du = (
-                        "100g"
-                        if item.unit.lower() in {"g", "gram", "grams"}
-                        else "100ml"
-                    )
-                except Exception:
-                    ppu = latest.price / Decimal(str(latest.quantity))
-                    du = latest.unit
-            else:
-                ppu = latest.price / Decimal(str(latest.quantity))
-                du = item.unit
-
-            result.append(
-                ShoppingItemWithCost(
-                    item=ShoppingItem(
-                        name=item.name,
-                        total_quantity=item.quantity,
-                        unit=item.unit,
-                        tags=item.require_tags,
-                    ),
-                    price_per_unit=ppu,
-                    price_unit=du,
-                    total_cost=cost,
-                    store=latest.store,
-                    purchase_date=getattr(latest, "purchased_date", None),
-                    missing_price=False,
-                )
-            )
-
-        except Exception:
-            result.append(
-                ShoppingItemWithCost(
-                    item=ShoppingItem(
-                        name=item.name,
-                        total_quantity=item.quantity,
-                        unit=item.unit,
-                        tags=item.require_tags,
-                    ),
-                    price_per_unit=None,
-                    price_unit=item.unit,
-                    total_cost=None,
-                    store=None,
-                    purchase_date=None,
-                    missing_price=True,
-                )
-            )
-
-    return result
+    return [
+        _cost_one_item(
+            item,
+            purchases,
+            density_data=density_data or {},
+            matcher=matcher or find_matching_purchases,
+            picker=picker,
+            price_display_fn=_default_price_display,
+        )
+        for item in items
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -747,24 +682,24 @@ class MenuAnalysis:
 
 def analyze_menu(
     production: list[ProductionItem],
-    recipes: Mapping[str, BaseRecipe],
-    groceries: Iterable[PurchasedItem],
+    assemblies: Iterable[Assembly],
+    purchases: Iterable[PurchasedItem],
     *,
     density_data: dict | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
     date: DateType | None = None,
 ) -> MenuAnalysis:
-    """Analyze the ingredient costs for an arbitrary menu.
+    """Analyze the ingredient costs for an arbitrary menu or project.
 
     Builds a virtual production run from *production*, generates the
-    aggregated shopping list, then enriches every line with the latest
-    grocery price.
+    aggregated shopping list, then enriches every line with the selected
+    purchase price.
 
     Args:
-        production: List of ``ProductionItem`` (recipe name + quantity).
-        recipes: Mapping of recipe name → ``BaseRecipe``.
-        groceries: Available grocery price data.
+        production: List of ``ProductionItem`` (assembly name + quantity).
+        assemblies: Assemblies keyed by ``.name`` (list, tuple, etc.).
+        purchases: Available purchase price data.
         density_data: Optional density data for unit conversion.
         matcher: Optional custom matching function.  Defaults to
             :func:`find_matching_purchases`.
@@ -787,10 +722,10 @@ def analyze_menu(
         target_dates=[virtual_date],
     )
 
-    shopping_list = generate_shopping_list(virtual_session, recipes)
-    items_with_cost = add_costs_to_shopping_list(
+    shopping_list = generate_shopping_list(virtual_session, assemblies)
+    items_with_cost = calculate_shopping_list_cost(
         shopping_list,
-        groceries,
+        purchases,
         density_data=density_data,
         matcher=matcher,
         picker=picker,

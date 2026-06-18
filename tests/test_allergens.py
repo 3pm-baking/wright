@@ -10,7 +10,7 @@ from wright.allergens import (
     detect_allergens_from_names,
     detect_dietary_properties,
 )
-from wright.models import BaseIngredient, BaseRecipe, RecipeComponent
+from wright.models import Ingredient, Recipe, RecipeComponent
 
 
 @pytest.fixture
@@ -35,13 +35,13 @@ def allergy_map():
 
 class TestDetectAllergens:
     def test_dairy_detected(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Butter", quantity=100, unit="g"),
+                        Ingredient(name="Butter", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -52,13 +52,13 @@ class TestDetectAllergens:
         assert "Milk" in result
 
     def test_gluten_detected(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 )
             ],
@@ -69,15 +69,15 @@ class TestDetectAllergens:
         assert "Wheat" in result
 
     def test_multiple_allergens(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Butter", quantity=100, unit="g"),
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Egg", quantity=3, unit="each"),
+                        Ingredient(name="Butter", quantity=100, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Egg", quantity=3, unit="each"),
                     ],
                 )
             ],
@@ -90,14 +90,14 @@ class TestDetectAllergens:
         assert "Eggs" in result
 
     def test_no_allergens(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Sugar", quantity=200, unit="g"),
-                        BaseIngredient(name="Salt", quantity=5, unit="g"),
+                        Ingredient(name="Sugar", quantity=200, unit="g"),
+                        Ingredient(name="Salt", quantity=5, unit="g"),
                     ],
                 )
             ],
@@ -108,16 +108,16 @@ class TestDetectAllergens:
         assert result == []
 
     def test_byproduct_skipped(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Butter", quantity=100, unit="g", byproduct=True
                         ),
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 )
             ],
@@ -130,13 +130,13 @@ class TestDetectAllergens:
         assert "Wheat" in result
 
     def test_gf_ingredient_suppresses_gluten(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="GF Flour", quantity=300, unit="g"),
+                        Ingredient(name="GF Flour", quantity=300, unit="g"),
                     ],
                 )
             ],
@@ -148,13 +148,13 @@ class TestDetectAllergens:
         assert "Wheat" not in result
 
     def test_cream_of_tartar_not_dairy(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Cream of Tartar", quantity=5, unit="g"),
+                        Ingredient(name="Cream of Tartar", quantity=5, unit="g"),
                     ],
                 )
             ],
@@ -165,13 +165,13 @@ class TestDetectAllergens:
         assert "Milk" not in result
 
     def test_vegan_ingredient_suppresses_dairy(self, allergy_map):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Vegan Butter", quantity=100, unit="g"),
+                        Ingredient(name="Vegan Butter", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -194,14 +194,14 @@ class TestDetectAllergensFromNames:
 
 class TestDetectBadges:
     def test_gluten_free_badge(self):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="GF Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Almond Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Sugar", quantity=100, unit="g"),
+                        Ingredient(name="Almond Flour", quantity=300, unit="g"),
+                        Ingredient(name="Sugar", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -212,16 +212,16 @@ class TestDetectBadges:
         assert "GLUTEN-FREE" in badges
 
     def test_vegan_badge(self):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Vegan Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Sugar", quantity=100, unit="g"),
-                        BaseIngredient(name="Vegan Butter", quantity=50, unit="g"),
-                        BaseIngredient(name="Almond Milk", quantity=200, unit="ml"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Sugar", quantity=100, unit="g"),
+                        Ingredient(name="Vegan Butter", quantity=50, unit="g"),
+                        Ingredient(name="Almond Milk", quantity=200, unit="ml"),
                     ],
                 )
             ],
@@ -233,14 +233,14 @@ class TestDetectBadges:
         assert "DAIRY-FREE" not in badges  # suppressed by VEGAN
 
     def test_not_vegan_with_egg(self):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Egg", quantity=3, unit="each"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Egg", quantity=3, unit="each"),
                     ],
                 )
             ],
@@ -251,13 +251,13 @@ class TestDetectBadges:
         assert "VEGAN" not in badges
 
     def test_not_gluten_free_with_flour(self):
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 )
             ],

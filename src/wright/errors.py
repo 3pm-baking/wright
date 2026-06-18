@@ -66,7 +66,10 @@ class RecipeCostErrors(RecipeCoreError):
     def __init__(
         self,
         errors: list[
-            IngredientNotFoundError | UnitConversionError | "RecipeCostErrors"
+            IngredientNotFoundError
+            | UnitConversionError
+            | RecipeCostErrors
+            | ValueError
         ],
     ):
         self.errors = errors

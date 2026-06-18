@@ -6,15 +6,15 @@ detect allergens, and enrich a shopping list with costs.
 ## 1. Define a recipe
 
 ```python
-from wright import BaseRecipe, BaseIngredient, RecipeComponent, ServingRange
+from wright import Recipe, Ingredient, RecipeComponent, ServingRange
 
-recipe = BaseRecipe(
+recipe = Recipe(
     name="Overnight Oats",
     components=[
         RecipeComponent(name="Base", ingredients=[
-            BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-            BaseIngredient(name="Greek Yogurt", quantity=100, unit="g"),
-            BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
+            Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+            Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+            Ingredient(name="Honey", quantity=1, unit="tbsp"),
         ])
     ],
     prep_time=5,
@@ -25,17 +25,17 @@ recipe = BaseRecipe(
 
 ## 2. Provide purchase data
 
-Any object satisfying the `PurchasedItem` protocol works.  `SimplePurchase`
+Any object satisfying the `PurchasedItem` protocol works.  `Purchase`
 is a built-in Pydantic model for convenience.
 
 ```python
 from decimal import Decimal
-from wright import SimplePurchase
+from wright import Purchase
 
 groceries = [
-    SimplePurchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
-    SimplePurchase(name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.99")),
-    SimplePurchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
+    Purchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
+    Purchase(name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.99")),
+    Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
 ]
 ```
 
@@ -84,9 +84,9 @@ badges = detect_dietary_properties(recipe)
 ## 6. Enrich shopping list with costs
 
 ```python
-from wright import add_costs_to_shopping_list
+from wright import calculate_shopping_list_cost
 
-items_with_cost = add_costs_to_shopping_list(shopping, groceries)
+items_with_cost = calculate_shopping_list_cost(shopping, groceries)
 for item in items_with_cost:
     print(f"{item.item.name}: ${item.total_cost}")
 ```
@@ -109,5 +109,7 @@ for item in analysis.top_drivers:
 
 ## Next steps
 
+- [Examples](examples.md) — copy-paste patterns for every workflow
 - [Customization guide](customization.md) — inject custom matchers, pickers, and callbacks
+- [Domains guide](domains.md) — construction, brewing, event planning, manufacturing
 - [API Reference](../api.md) — full function and model documentation

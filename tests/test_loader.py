@@ -16,7 +16,7 @@ from wright.loader import (
 from wright.models import ServingRange
 
 
-class TestLoadBaseRecipe:
+class TestLoadRecipe:
     def test_load_quinoa_bowl(self, tmp_path: Path):
         yaml_content = """name: Quinoa Power Bowl
 prep_time: 15

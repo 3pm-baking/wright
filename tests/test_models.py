@@ -7,22 +7,22 @@ from decimal import Decimal
 import pytest
 
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Ingredient,
+    Recipe,
     CategoryRule,
     IngredientCost,
     PriceRange,
     RecipeComponent,
     RecipeCost,
     ServingRange,
-    SimplePurchase,
+    Purchase,
     categorize_ingredient,
 )
 
 
-class TestBaseIngredient:
+class TestIngredient:
     def test_create_simple(self):
-        ing = BaseIngredient(name="Sugar", quantity=200, unit="g")
+        ing = Ingredient(name="Sugar", quantity=200, unit="g")
         assert ing.name == "Sugar"
         assert ing.quantity == 200
         assert ing.unit == "g"
@@ -31,20 +31,20 @@ class TestBaseIngredient:
         assert ing.product_ref is None
 
     def test_with_tags(self):
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Butter", quantity=100, unit="g", require_tags=["unsalted"]
         )
         assert ing.require_tags == ["unsalted"]
 
     def test_scale(self):
-        ing = BaseIngredient(name="Sugar", quantity=200, unit="g")
+        ing = Ingredient(name="Sugar", quantity=200, unit="g")
         scaled = ing.scale(2)
         assert scaled.name == "Sugar"
         assert scaled.quantity == 400
         assert scaled.unit == "g"
 
     def test_scale_preserves_tags(self):
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Butter", quantity=100, unit="g", require_tags=["unsalted"]
         )
         scaled = ing.scale(0.5)
@@ -52,7 +52,7 @@ class TestBaseIngredient:
         assert scaled.quantity == 50
 
     def test_equivalent_quantity(self):
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Vanilla Sugar",
             quantity=1,
             unit="packet",
@@ -63,11 +63,11 @@ class TestBaseIngredient:
         assert ing.equivalent_unit == "g"
 
     def test_byproduct(self):
-        ing = BaseIngredient(name="Water", quantity=100, unit="ml", byproduct=True)
+        ing = Ingredient(name="Water", quantity=100, unit="ml", byproduct=True)
         assert ing.byproduct is True
 
     def test_product_ref(self):
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Vanilla Sugar",
             quantity=1,
             unit="packet",
@@ -83,8 +83,8 @@ class TestRecipeComponent:
         comp = RecipeComponent(
             name="Dough",
             ingredients=[
-                BaseIngredient(name="Flour", quantity=300, unit="g"),
-                BaseIngredient(name="Butter", quantity=150, unit="g"),
+                Ingredient(name="Flour", quantity=300, unit="g"),
+                Ingredient(name="Butter", quantity=150, unit="g"),
             ],
         )
         assert comp.name == "Dough"
@@ -93,7 +93,7 @@ class TestRecipeComponent:
     def test_scale(self):
         comp = RecipeComponent(
             name="Dough",
-            ingredients=[BaseIngredient(name="Flour", quantity=300, unit="g")],
+            ingredients=[Ingredient(name="Flour", quantity=300, unit="g")],
         )
         scaled = comp.scale(2)
         assert scaled.name == "Dough"
@@ -101,9 +101,9 @@ class TestRecipeComponent:
 
     def test_scale_polymorphic(self):
         """Scale should call the most specific scale() method."""
-        from wright.models import BaseIngredient
+        from wright.models import Ingredient
 
-        class CustomIngredient(BaseIngredient):
+        class CustomIngredient(Ingredient):
             flavour: str = "plain"
 
             def scale(self, factor: float):
@@ -149,9 +149,9 @@ class TestServingRange:
             ServingRange(min_servings=0, max_servings=4)
 
 
-class TestBaseRecipe:
+class TestRecipe:
     def test_create_minimal(self):
-        r = BaseRecipe(name="Bread", components=[], prep_time=10, cook_time=30)
+        r = Recipe(name="Bread", components=[], prep_time=10, cook_time=30)
         assert r.name == "Bread"
         assert r.prep_time == 10
         assert r.cook_time == 30
@@ -159,13 +159,13 @@ class TestBaseRecipe:
         assert r.instructions == []
 
     def test_servings_int(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake", components=[], prep_time=10, cook_time=30, servings=8
         )
         assert r.servings == 8
 
     def test_servings_range(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=10,
@@ -177,20 +177,20 @@ class TestBaseRecipe:
         assert r.servings.max_servings == 10
 
     def test_all_ingredients(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 ),
                 RecipeComponent(
                     name="Topping",
                     ingredients=[
-                        BaseIngredient(name="Sugar", quantity=100, unit="g"),
-                        BaseIngredient(name="Butter", quantity=50, unit="g"),
+                        Ingredient(name="Sugar", quantity=100, unit="g"),
+                        Ingredient(name="Butter", quantity=50, unit="g"),
                     ],
                 ),
             ],
@@ -200,12 +200,12 @@ class TestBaseRecipe:
         assert len(r.all_ingredients) == 3
 
     def test_double(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
-                    ingredients=[BaseIngredient(name="Flour", quantity=300, unit="g")],
+                    ingredients=[Ingredient(name="Flour", quantity=300, unit="g")],
                 )
             ],
             prep_time=10,
@@ -217,7 +217,7 @@ class TestBaseRecipe:
         assert d.servings == 8
 
     def test_size_up_range(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=10,
@@ -230,17 +230,17 @@ class TestBaseRecipe:
         assert d.servings.max_servings == 6
 
     def test_servings_bounds_none(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Product", components=[], prep_time=5, cook_time=0, servings=None
         )
         assert r._servings_bounds() == (1, 1)
 
     def test_servings_bounds_int(self):
-        r = BaseRecipe(name="Cake", components=[], prep_time=5, cook_time=5, servings=6)
+        r = Recipe(name="Cake", components=[], prep_time=5, cook_time=5, servings=6)
         assert r._servings_bounds() == (6, 6)
 
     def test_servings_bounds_range(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=5,
@@ -250,19 +250,19 @@ class TestBaseRecipe:
         assert r._servings_bounds() == (4, 8)
 
 
-class TestSimplePurchase:
+class TestPurchase:
     def test_create(self):
-        g = SimplePurchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49"))
+        g = Purchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49"))
         assert g.name == "Sugar"
         assert g.quantity == 1000
         assert g.price == Decimal("2.49")
 
     def test_tag_set_empty(self):
-        g = SimplePurchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49"))
+        g = Purchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49"))
         assert g.tag_set == set()
 
     def test_tag_set(self):
-        g = SimplePurchase(
+        g = Purchase(
             name="Butter",
             tags="unsalted, organic",
             quantity=500,
@@ -272,11 +272,11 @@ class TestSimplePurchase:
         assert g.tag_set == {"unsalted", "organic"}
 
     def test_matches_requirements_empty(self):
-        g = SimplePurchase(name="Butter", quantity=500, unit="g", price=Decimal("5.99"))
+        g = Purchase(name="Butter", quantity=500, unit="g", price=Decimal("5.99"))
         assert g.matches_requirements([]) is True
 
     def test_matches_requirements_match(self):
-        g = SimplePurchase(
+        g = Purchase(
             name="Butter",
             tags="unsalted, organic",
             quantity=500,
@@ -287,7 +287,7 @@ class TestSimplePurchase:
         assert g.matches_requirements(["organic", "unsalted"]) is True
 
     def test_matches_requirements_no_match(self):
-        g = SimplePurchase(
+        g = Purchase(
             name="Butter",
             tags="unsalted",
             quantity=500,
@@ -299,7 +299,7 @@ class TestSimplePurchase:
     def test_purchased_date(self):
         from datetime import date
 
-        g = SimplePurchase(
+        g = Purchase(
             name="Eggs",
             quantity=12,
             unit="each",
@@ -329,7 +329,7 @@ class TestPriceRange:
 
 class TestIngredientCost:
     def test_create(self):
-        ing = BaseIngredient(name="Sugar", quantity=200, unit="g")
+        ing = Ingredient(name="Sugar", quantity=200, unit="g")
         pr = PriceRange(min_price=Decimal("0.50"), max_price=Decimal("0.80"))
         ic = IngredientCost(ingredient=ing, price_range=pr, sources=["Store Brand"])
         assert ic.ingredient.name == "Sugar"
@@ -404,9 +404,9 @@ class TestCategorizeIngredient:
         )
 
 
-class TestBaseRecipeDescriptionTags:
+class TestRecipeDescriptionTags:
     def test_description(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=10,
@@ -416,11 +416,11 @@ class TestBaseRecipeDescriptionTags:
         assert r.description == "A rich chocolate cake"
 
     def test_description_defaults_to_none(self):
-        r = BaseRecipe(name="Cake", components=[], prep_time=10, cook_time=30)
+        r = Recipe(name="Cake", components=[], prep_time=10, cook_time=30)
         assert r.description is None
 
     def test_tags(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=10,
@@ -430,11 +430,11 @@ class TestBaseRecipeDescriptionTags:
         assert r.tags == ["dessert", "holiday", "chocolate"]
 
     def test_tags_defaults_to_empty(self):
-        r = BaseRecipe(name="Cake", components=[], prep_time=10, cook_time=30)
+        r = Recipe(name="Cake", components=[], prep_time=10, cook_time=30)
         assert r.tags == []
 
     def test_size_up_preserves_description_and_tags(self):
-        r = BaseRecipe(
+        r = Recipe(
             name="Cake",
             components=[],
             prep_time=10,

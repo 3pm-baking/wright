@@ -16,11 +16,11 @@ from wright.costing import (
 from wright.errors import RecipeCostErrors, UnitConversionError
 from wright.matching import find_matching_purchases
 from wright.models import (
-    BaseIngredient,
-    BaseRecipe,
+    Ingredient,
+    Recipe,
     IngredientCost,
     RecipeComponent,
-    SimplePurchase,
+    Purchase,
 )
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
@@ -44,23 +44,23 @@ def density_data():
 
 
 @pytest.fixture
-def simple_groceries():
+def simple_purchases():
     return [
-        SimplePurchase(
+        Purchase(
             name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")
         ),
-        SimplePurchase(
+        Purchase(
             name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.49")
         ),
-        SimplePurchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
-        SimplePurchase(
+        Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
+        Purchase(
             name="Chia Seeds", quantity=200, unit="g", price=Decimal("4.99")
         ),
-        SimplePurchase(name="Salt", quantity=500, unit="g", price=Decimal("2.99")),
-        SimplePurchase(name="Cinnamon", quantity=100, unit="g", price=Decimal("3.99")),
-        SimplePurchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.99")),
-        SimplePurchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49")),
-        SimplePurchase(name="Egg", quantity=12, unit="each", price=Decimal("4.99")),
+        Purchase(name="Salt", quantity=500, unit="g", price=Decimal("2.99")),
+        Purchase(name="Cinnamon", quantity=100, unit="g", price=Decimal("3.99")),
+        Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.99")),
+        Purchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49")),
+        Purchase(name="Egg", quantity=12, unit="each", price=Decimal("4.99")),
     ]
 
 
@@ -105,16 +105,16 @@ class TestConvertWithDensity:
 
 
 class TestCalculateIngredientCost:
-    def test_simple_weight(self, simple_groceries):
-        ing = BaseIngredient(name="Rolled Oats", quantity=50, unit="g")
-        groc = simple_groceries[0]  # 1000g for $3.49
+    def test_simple_weight(self, simple_purchases):
+        ing = Ingredient(name="Rolled Oats", quantity=50, unit="g")
+        groc = simple_purchases[0]  # 1000g for $3.49
         cost = calculate_ingredient_cost(ing, groc)
         # 50g / 1000g * $3.49 = $0.1745
         assert cost == Decimal("0.1745")
 
-    def test_density_based_conversion(self, simple_groceries, density_data):
-        ing = BaseIngredient(name="Honey", quantity=1, unit="tbsp")
-        groc = SimplePurchase(
+    def test_density_based_conversion(self, simple_purchases, density_data):
+        ing = Ingredient(name="Honey", quantity=1, unit="tbsp")
+        groc = Purchase(
             name="Honey", quantity=340, unit="g", price=Decimal("5.99")
         )
         cost = calculate_ingredient_cost(ing, groc, density_data=density_data)
@@ -122,32 +122,32 @@ class TestCalculateIngredientCost:
         expected = Decimal("21") * Decimal("5.99") / Decimal("340")
         assert abs(cost - expected) < Decimal("0.01")
 
-    def test_discrete_units(self, simple_groceries):
-        ing = BaseIngredient(name="Egg", quantity=3, unit="each")
-        groc = simple_groceries[8]  # 12 eggs for $4.99
+    def test_discrete_units(self, simple_purchases):
+        ing = Ingredient(name="Egg", quantity=3, unit="each")
+        groc = simple_purchases[8]  # 12 eggs for $4.99
         cost = calculate_ingredient_cost(ing, groc)
         # 3/12 * $4.99 = $1.2475
         assert cost == Decimal("1.2475")
 
     def test_unit_conversion_raises(self):
-        ing = BaseIngredient(name="Mystery", quantity=100, unit="g")
-        groc = SimplePurchase(
+        ing = Ingredient(name="Mystery", quantity=100, unit="g")
+        groc = Purchase(
             name="Mystery", quantity=1, unit="each", price=Decimal("5.00")
         )
         with pytest.raises(UnitConversionError):
             calculate_ingredient_cost(ing, groc)
 
     def test_pinch_estimation(self):
-        ing = BaseIngredient(name="Salt", quantity=2, unit="pinch")
-        groc = SimplePurchase(
+        ing = Ingredient(name="Salt", quantity=2, unit="pinch")
+        groc = Purchase(
             name="Salt", quantity=500, unit="g", price=Decimal("2.99")
         )
         cost = calculate_ingredient_cost(ing, groc)
         assert cost > Decimal("0")
 
     def test_pinch_non_convertible(self):
-        ing = BaseIngredient(name="Salt", quantity=1, unit="pinch")
-        groc = SimplePurchase(
+        ing = Ingredient(name="Salt", quantity=1, unit="pinch")
+        groc = Purchase(
             name="Salt", quantity=1, unit="each", price=Decimal("2.99")
         )
         cost = calculate_ingredient_cost(ing, groc)
@@ -156,14 +156,14 @@ class TestCalculateIngredientCost:
     def test_equivalent_quantity_packet_to_grams(self):
         """Packet ingredient with equivalent_quantity can be costed against
         a per-gram grocery item."""
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Pudding",
             quantity=1,
             unit="packet",
             equivalent_quantity=37,
             equivalent_unit="g",
         )
-        groc = SimplePurchase(
+        groc = Purchase(
             name="Pudding", quantity=1000, unit="g", price=Decimal("3.00")
         )
         cost = calculate_ingredient_cost(ing, groc)
@@ -173,14 +173,14 @@ class TestCalculateIngredientCost:
     def test_equivalent_quantity_not_used_when_compatible(self):
         """When grocery unit is already packet-compatible, use direct
         packet matching over equivalent_quantity."""
-        ing = BaseIngredient(
+        ing = Ingredient(
             name="Pudding",
             quantity=2,
             unit="packet",
             equivalent_quantity=37,
             equivalent_unit="g",
         )
-        groc = SimplePurchase(
+        groc = Purchase(
             name="Pudding", quantity=5, unit="packet", price=Decimal("10.00")
         )
         cost = calculate_ingredient_cost(ing, groc)
@@ -189,9 +189,9 @@ class TestCalculateIngredientCost:
 
 
 class TestCalculateIngredientCostRange:
-    def test_single_grocery(self, simple_groceries, density_data):
-        ing = BaseIngredient(name="Rolled Oats", quantity=50, unit="g")
-        matching = find_matching_purchases(ing, simple_groceries)
+    def test_single_grocery(self, simple_purchases, density_data):
+        ing = Ingredient(name="Rolled Oats", quantity=50, unit="g")
+        matching = find_matching_purchases(ing, simple_purchases)
         result = calculate_ingredient_cost_range(
             ing, matching, density_data=density_data
         )
@@ -200,17 +200,17 @@ class TestCalculateIngredientCostRange:
         assert result.price_range.min_price == result.price_range.max_price
         assert len(result.sources) == 1
 
-    def test_multiple_groceries(self, density_data):
-        ing = BaseIngredient(name="Sugar", quantity=500, unit="g")
-        groceries = [
-            SimplePurchase(
+    def test_multiple_purchases(self, density_data):
+        ing = Ingredient(name="Sugar", quantity=500, unit="g")
+        purchases = [
+            Purchase(
                 name="Sugar",
                 quantity=1000,
                 unit="g",
                 price=Decimal("2.49"),
                 store="Budget Mart",
             ),
-            SimplePurchase(
+            Purchase(
                 name="Sugar",
                 quantity=1000,
                 unit="g",
@@ -219,7 +219,7 @@ class TestCalculateIngredientCostRange:
             ),
         ]
         result = calculate_ingredient_cost_range(
-            ing, groceries, density_data=density_data
+            ing, purchases, density_data=density_data
         )
         assert result.price_range.min_price < result.price_range.max_price
         assert len(result.sources) == 2
@@ -229,16 +229,16 @@ class TestCalculateIngredientCostRange:
 
 
 class TestCalculateRecipeCost:
-    def test_simple_recipe(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_simple_recipe(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Overnight Oats",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Rolled Oats", quantity=50, unit="g"),
-                        BaseIngredient(name="Greek Yogurt", quantity=100, unit="g"),
-                        BaseIngredient(name="Honey", quantity=1, unit="tbsp"),
+                        Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                        Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+                        Ingredient(name="Honey", quantity=1, unit="tbsp"),
                     ],
                 )
             ],
@@ -247,22 +247,22 @@ class TestCalculateRecipeCost:
             servings=1,
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         assert result.recipe_name == "Overnight Oats"
         assert len(result.ingredient_costs) == 3
         assert result.total_cost_range.min_price > Decimal("0")
         assert result.cost_per_serving_range.min_price > Decimal("0")
 
-    def test_byproduct_skipped(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_byproduct_skipped(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(
                             name="Water", quantity=100, unit="ml", byproduct=True
                         ),
                     ],
@@ -272,20 +272,20 @@ class TestCalculateRecipeCost:
             cook_time=5,
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         # Only flour should be costed (water is byproduct)
         assert len(result.ingredient_costs) == 1
 
-    def test_zero_quantity_skipped(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_zero_quantity_skipped(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Salt", quantity=0, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Salt", quantity=0, unit="g"),
                     ],
                 )
             ],
@@ -293,19 +293,19 @@ class TestCalculateRecipeCost:
             cook_time=5,
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         assert len(result.ingredient_costs) == 1
 
-    def test_missing_ingredient_collects_errors(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_missing_ingredient_collects_errors(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(name="Ghost Flour", quantity=100, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Ghost Flour", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -313,17 +313,17 @@ class TestCalculateRecipeCost:
             cook_time=5,
         )
         with pytest.raises(RecipeCostErrors) as exc:
-            calculate_recipe_cost(recipe, simple_groceries, density_data=density_data)
+            calculate_recipe_cost(recipe, simple_purchases, density_data=density_data)
         assert "1 ingredient" in str(exc.value)
 
-    def test_per_serving_calculation(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_per_serving_calculation(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Rolled Oats", quantity=100, unit="g"),
+                        Ingredient(name="Rolled Oats", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -332,21 +332,21 @@ class TestCalculateRecipeCost:
             servings={"min_servings": 2, "max_servings": 4},
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         # Cost per serving: cheapest = total/4, priciest = total/2
         total = result.total_cost_range.min_price
         assert result.cost_per_serving_range.min_price == total / Decimal("4")
         assert result.cost_per_serving_range.max_price == total / Decimal("2")
 
-    def test_exact_servings(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_exact_servings(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Test",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Rolled Oats", quantity=100, unit="g"),
+                        Ingredient(name="Rolled Oats", quantity=100, unit="g"),
                     ],
                 )
             ],
@@ -355,7 +355,7 @@ class TestCalculateRecipeCost:
             servings=8,
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         total = result.total_cost_range.min_price
         assert result.cost_per_serving_range.min_price == total / Decimal("8")
@@ -366,16 +366,16 @@ class TestCalculateRecipeCost:
 
 
 class TestRecursiveCosting:
-    def test_product_ref(self, simple_groceries, density_data):
+    def test_product_ref(self, simple_purchases, density_data):
         # Sub-recipe: Vanilla Sugar
-        vanilla_sugar = BaseRecipe(
+        vanilla_sugar = Recipe(
             name="Vanilla Sugar",
             components=[
                 RecipeComponent(
                     name="Mix",
                     ingredients=[
-                        BaseIngredient(name="Sugar", quantity=200, unit="g"),
-                        BaseIngredient(name="Egg", quantity=1, unit="each"),
+                        Ingredient(name="Sugar", quantity=200, unit="g"),
+                        Ingredient(name="Egg", quantity=1, unit="each"),
                     ],
                 )
             ],
@@ -386,14 +386,14 @@ class TestRecursiveCosting:
         )
 
         # Main recipe uses vanilla sugar via product_ref
-        cake = BaseRecipe(
+        cake = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
-                        BaseIngredient(
+                        Ingredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(
                             name="Vanilla Sugar",
                             quantity=1,
                             unit="packet",
@@ -415,7 +415,7 @@ class TestRecursiveCosting:
 
         result = calculate_recipe_cost(
             cake,
-            simple_groceries,
+            simple_purchases,
             density_data=density_data,
             recipe_index=recipe_index,
         )
@@ -431,14 +431,14 @@ class TestRecursiveCosting:
         assert "Vanilla Sugar" in vs_entry.sources[0]
         assert "sub-recipe" in vs_entry.sources[0]
 
-    def test_cycle_detection(self, simple_groceries, density_data):
-        a = BaseRecipe(
+    def test_cycle_detection(self, simple_purchases, density_data):
+        a = Recipe(
             name="A",
             components=[
                 RecipeComponent(
                     name="X",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Cycle",
                             quantity=1,
                             unit="each",
@@ -452,13 +452,13 @@ class TestRecursiveCosting:
             servings=None,
             net_weight_grams=100,
         )
-        b = BaseRecipe(
+        b = Recipe(
             name="B",
             components=[
                 RecipeComponent(
                     name="Y",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Cycle Back",
                             quantity=1,
                             unit="each",
@@ -478,20 +478,20 @@ class TestRecursiveCosting:
         with pytest.raises(RecipeCostErrors) as exc:
             calculate_recipe_cost(
                 a,
-                simple_groceries,
+                simple_purchases,
                 density_data=density_data,
                 recipe_index=recipe_index,
             )
         assert "cycle" in str(exc.value).lower()
 
-    def test_missing_product_ref(self, simple_groceries, density_data):
-        cake = BaseRecipe(
+    def test_missing_product_ref(self, simple_purchases, density_data):
+        cake = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Vanilla Sugar",
                             quantity=1,
                             unit="packet",
@@ -510,23 +510,23 @@ class TestRecursiveCosting:
         with pytest.raises(RecipeCostErrors) as exc:
             calculate_recipe_cost(
                 cake,
-                simple_groceries,
+                simple_purchases,
                 density_data=density_data,
             )
         assert "vanilla-sugar" in str(exc.value)
 
 
 class TestGetTopCostDrivers:
-    def test_top_drivers(self, simple_groceries, density_data):
-        recipe = BaseRecipe(
+    def test_top_drivers(self, simple_purchases, density_data):
+        recipe = Recipe(
             name="Multi",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Rolled Oats", quantity=500, unit="g"),
-                        BaseIngredient(name="Flour", quantity=100, unit="g"),
-                        BaseIngredient(name="Greek Yogurt", quantity=50, unit="g"),
+                        Ingredient(name="Rolled Oats", quantity=500, unit="g"),
+                        Ingredient(name="Flour", quantity=100, unit="g"),
+                        Ingredient(name="Greek Yogurt", quantity=50, unit="g"),
                     ],
                 )
             ],
@@ -534,7 +534,7 @@ class TestGetTopCostDrivers:
             cook_time=5,
         )
         result = calculate_recipe_cost(
-            recipe, simple_groceries, density_data=density_data
+            recipe, simple_purchases, density_data=density_data
         )
         top = get_top_cost_drivers(result, n=2)
         assert len(top) == 2
@@ -545,15 +545,15 @@ class TestGetTopCostDrivers:
 class TestCustomMatcherCosting:
     """Tests that calculate_recipe_cost uses a custom matcher when provided."""
 
-    def test_custom_matcher_successful(self, simple_groceries):
+    def test_custom_matcher_successful(self, simple_purchases):
         """A fuzzy matcher that matches by substring works in costing."""
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(
+                        Ingredient(
                             name="Organic Rolled Oats", quantity=50, unit="g"
                         ),
                     ],
@@ -563,27 +563,27 @@ class TestCustomMatcherCosting:
             cook_time=5,
         )
 
-        def fuzzy_matcher(ingredient, groceries):
-            return [g for g in groceries if "oats" in g.name.lower()]
+        def fuzzy_matcher(ingredient, purchases):
+            return [g for g in purchases if "oats" in g.name.lower()]
 
-        result = calculate_recipe_cost(recipe, simple_groceries, matcher=fuzzy_matcher)
+        result = calculate_recipe_cost(recipe, simple_purchases, matcher=fuzzy_matcher)
         assert result.total_cost_range.midpoint > Decimal("0")
 
-    def test_custom_matcher_no_match(self, simple_groceries):
+    def test_custom_matcher_no_match(self, simple_purchases):
         """When custom matcher raises IngredientNotFoundError, cost
         function reports it as a RecipeCostErrors."""
         from wright.errors import IngredientNotFoundError
 
-        def failing_matcher(ingredient, groceries):
+        def failing_matcher(ingredient, purchases):
             raise IngredientNotFoundError(ingredient.name)
 
-        recipe = BaseRecipe(
+        recipe = Recipe(
             name="Cake",
             components=[
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        BaseIngredient(name="Flour", quantity=300, unit="g"),
+                        Ingredient(name="Flour", quantity=300, unit="g"),
                     ],
                 )
             ],
@@ -592,4 +592,4 @@ class TestCustomMatcherCosting:
         )
 
         with pytest.raises(RecipeCostErrors):
-            calculate_recipe_cost(recipe, simple_groceries, matcher=failing_matcher)
+            calculate_recipe_cost(recipe, simple_purchases, matcher=failing_matcher)

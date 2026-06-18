@@ -5,11 +5,12 @@ All models are data-source agnostic — no file I/O, no database assumptions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
-from typing import Mapping, Protocol
+from typing import Protocol
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Lazy import for type annotation only
 # (actual import occurs when models are used, not at module level)
@@ -49,8 +50,8 @@ class PurchasedItem(Protocol):
         ...
 
 
-class SimplePurchase(BaseModel):
-    """Concrete grocery item for getting started without writing custom classes."""
+class Purchase(BaseModel):
+    """Concrete item for getting started without writing custom classes."""
 
     name: str = Field(..., description="Ingredient name (e.g. 'Rolled Oats')")
     brand: str | None = Field(default=None, description="Brand name")
@@ -80,48 +81,86 @@ class SimplePurchase(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Core recipe models
+# Core BOM models — domain-agnostic
 # ---------------------------------------------------------------------------
 
 
-class BaseIngredient(BaseModel):
-    """An ingredient used in a recipe with optional variant requirements."""
+class Material(BaseModel):
+    """A bill-of-materials item for any domain (food, construction, etc.).
 
-    name: str = Field(..., description="Base ingredient name (exact match to grocery)")
-    quantity: float = Field(..., description="Amount of the ingredient")
-    unit: str = Field(..., description="Unit of measurement (g, oz, cups, each, etc.)")
+    Use :class:`Ingredient` for food-specific contexts, or subclass
+    ``Material`` directly for non-food domains (e.g., ``Lumber``,
+    ``Hardware``, ``Paint``).
+    """
+
+    name: str = Field(..., description="Item name (exact match to purchase data)")
+    quantity: float = Field(..., description="Amount needed")
+    unit: str = Field(..., description="Unit of measurement (g, lb, ft, each, etc.)")
     require_tags: list[str] = Field(
         default_factory=list,
-        description="Required tags (e.g., ['organic', 'unsalted'])",
+        description="Required variant tags (e.g., ['organic', 'pressure-treated'])",
     )
     equivalent_quantity: float | None = Field(
         default=None,
-        description="Equivalent quantity in base units (e.g., 8 for '1 packet = 8g')",
+        description=(
+            "Equivalent quantity in base units "
+            "(e.g., 500 for '1 box = 500 each')"
+        ),
     )
     equivalent_unit: str | None = Field(
         default=None,
-        description="Base unit for equivalence (e.g., 'g')",
+        description="Base unit for equivalence (e.g., 'each')",
     )
     byproduct: bool = Field(
         default=False,
         description=(
-            "If True, this ingredient is a byproduct/partial use of another "
-            "ingredient already listed elsewhere in the recipe. Excluded from "
-            "shopping lists, cost calculation, and label/export ingredient lists."
+            "If True, this item is a byproduct/partial use of another "
+            "item already listed elsewhere. Excluded from shopping lists "
+            "and cost calculation."
         ),
     )
     product_ref: str | None = Field(
         default=None,
         description=(
-            "Reference to another recipe used for recursive costing. "
-            "When set, the ingredient's cost is calculated from that recipe's "
-            "ingredients instead of looking up a grocery item."
+            "Reference to another assembly/recipe used for recursive expansion. "
+            "When set, this item's quantity is expanded into the referenced "
+            "assembly's materials instead of being looked up directly."
         ),
     )
 
-    def scale(self, factor: float) -> "BaseIngredient":
-        """Return a new BaseIngredient with quantity scaled by the given factor."""
-        return BaseIngredient(
+    def scale(self, factor: float) -> Material:
+        """Return a new Material with quantity scaled by the given factor."""
+        return Material(
+            name=self.name,
+            quantity=self.quantity * factor,
+            unit=self.unit,
+            require_tags=self.require_tags,
+            equivalent_quantity=self.equivalent_quantity,
+            equivalent_unit=self.equivalent_unit,
+            byproduct=self.byproduct,
+            product_ref=self.product_ref,
+        )
+
+    def __mul__(self, factor: float) -> Material:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return self.scale(factor)
+
+    def __rmul__(self, factor: float) -> Material:
+        return self * factor
+
+
+class Ingredient(Material):
+    """A food ingredient used in a recipe.
+
+    Inherits all fields from :class:`Material`.  Subclass in your
+    application layer to add domain-specific metadata (vendor,
+    nutrition, etc.).
+    """
+
+    def scale(self, factor: float) -> Ingredient:
+        """Return a new Ingredient with quantity scaled by the given factor."""
+        return Ingredient(
             name=self.name,
             quantity=self.quantity * factor,
             unit=self.unit,
@@ -133,19 +172,67 @@ class BaseIngredient(BaseModel):
         )
 
 
-class RecipeComponent(BaseModel):
-    """A named component or sub-recipe (e.g., 'Chocolate Shortcrust Dough')."""
+class Component(BaseModel):
+    """A domain-agnostic named group of materials.
+
+    For food domains, use :class:`RecipeComponent` (which adds an
+    ``ingredients`` alias).  For non-food domains, use ``Component``
+    directly or subclass it (e.g., ``WallAssembly``, ``BatchStage``).
+    """
 
     name: str = Field(..., description="Name of this component")
-    ingredients: list[BaseIngredient] = Field(
-        ..., description="Ingredients for this component"
+    materials: list[Material] = Field(
+        default_factory=list, description="Materials in this component"
     )
 
-    def scale(self, factor: float) -> "RecipeComponent":
+    def scale(self, factor: float) -> Component:
+        """Return a new Component with all materials scaled."""
+        return Component(
+            name=self.name,
+            materials=[m.scale(factor) for m in self.materials],
+        )
+
+    def __mul__(self, factor: float) -> Component:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return self.scale(factor)
+
+    def __rmul__(self, factor: float) -> Component:
+        return self * factor
+
+
+class RecipeComponent(Component):
+    """A named component or sub-recipe (e.g., 'Chocolate Shortcrust Dough').
+
+    Inherits from :class:`Component`.  The ``ingredients`` property is an
+    alias for ``materials``, typed as ``list[Ingredient]`` for food domains.
+
+    Backward-compatible: accepts ``ingredients=`` in the constructor (mapped
+    to ``materials=``).
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_ingredients_to_materials(cls, data: object) -> object:
+        """Accept ``ingredients=`` in the constructor, mapping to ``materials=``."""
+        if isinstance(data, dict) and "ingredients" in data:
+            data = {**data, "materials": data.pop("ingredients")}  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+        return data
+
+    @property
+    def ingredients(self) -> list[Ingredient]:
+        """Food-domain alias for :attr:`Component.materials`."""
+        return self.materials  # ty:ignore[invalid-return-type]
+
+    @ingredients.setter
+    def ingredients(self, value: list[Ingredient]) -> None:
+        self.materials = value  # ty:ignore[invalid-assignment]
+
+    def scale(self, factor: float) -> RecipeComponent:
         """Return a new RecipeComponent with all ingredients scaled."""
         return RecipeComponent(
             name=self.name,
-            ingredients=[ing.scale(factor) for ing in self.ingredients],
+            materials=[m.scale(factor) for m in self.materials],
         )
 
 
@@ -160,30 +247,86 @@ class ServingRange(BaseModel):
         """Return the midpoint of the serving range."""
         return (self.min_servings + self.max_servings) / 2
 
-    def scale(self, factor: float) -> "ServingRange":
+    def scale(self, factor: float) -> ServingRange:
         """Return a new ServingRange scaled by the given factor."""
         return ServingRange(
             min_servings=int(self.min_servings * factor),
             max_servings=int(self.max_servings * factor),
         )
 
+    def __mul__(self, factor: float) -> ServingRange:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return self.scale(factor)
+
+    def __rmul__(self, factor: float) -> ServingRange:
+        return self * factor
+
 
 Servings = int | ServingRange
 """A recipe yields either an exact number of servings or a range."""
 
 
-class BaseRecipe(BaseModel):
+class Assembly(BaseModel):
+    """A domain-agnostic collection of components.
+
+    Use ``Assembly`` directly for construction, brewing, manufacturing,
+    or any non-food domain.  ``Recipe`` subclasses it with food-specific
+    fields like ``prep_time``, ``cook_time``, and ``servings``.
+
+    All planning functions (:func:`~wright.planning.generate_shopping_list`,
+    :func:`~wright.planning.analyze_menu`) accept ``Assembly`` — so you can
+    use the full pipeline without dummy food fields.
+    """
+
+    name: str = Field(..., description="Assembly name (e.g., 'Backyard Deck')")
+    components: list[Component] = Field(
+        default_factory=list,
+        description="Named groups of materials (e.g., framing, surface, footings)",
+    )
+    description: str | None = Field(
+        default=None,
+        description="What this assembly is (e.g., '10x12 freestanding deck')",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Author-assigned classifications (e.g., 'outdoor', 'weekend-project')."
+        ),
+    )
+
+    @property
+    def all_materials(self) -> list[Material]:
+        """Flatten all materials across all components."""
+        return [m for comp in self.components for m in comp.materials]
+
+    def size_up(self, factor: float) -> Assembly:
+        """Return a new Assembly with all material quantities scaled."""
+        return Assembly(
+            name=self.name,
+            components=[comp.scale(factor) for comp in self.components],
+            description=self.description,
+            tags=self.tags,
+        )
+
+    def __mul__(self, factor: float) -> Assembly:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return self.size_up(factor)
+
+    def __rmul__(self, factor: float) -> Assembly:
+        return self * factor
+
+
+class Recipe(Assembly):
     """A complete recipe with components and optional serving information.
 
-    Recipes are data-source agnostic — populate from YAML, JSON, a database,
-    or pure Python.  Subclass to add domain-specific metadata (pricing,
+    Subclasses :class:`Assembly` with food-specific fields.  Recipes are
+    data-source agnostic — populate from YAML, JSON, a database, or pure
+    Python.  Subclass to add domain-specific metadata (pricing,
     translations, etc.).
     """
 
-    name: str = Field(..., description="Recipe name (e.g., 'Overnight Oats')")
-    components: list[RecipeComponent] = Field(
-        ..., description="Recipe sub-components (e.g., dough, filling)"
-    )
     instructions: list[str] = Field(
         default_factory=list,
         description="Step-by-step preparation instructions",
@@ -201,18 +344,25 @@ class BaseRecipe(BaseModel):
         default=None,
         description="Net weight of finished product in grams",
     )
-    description: str | None = Field(
-        default=None,
-        description="What this recipe is (e.g., 'Creamy lemon bars with a buttery shortbread crust')",
-    )
-    tags: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Author-assigned classifications (e.g., 'breakfast', 'summer', "
-            "'bavarian', 'make-ahead').  Computed dietary properties like "
-            "'vegan' and 'gluten-free' come from detect_dietary_properties()."
-        ),
-    )
+
+    @property
+    def all_ingredients(self) -> list[Ingredient]:
+        """Flatten all ingredients across all components."""
+        ingredients: list[Ingredient] = []
+        for comp in self.components:
+            if isinstance(comp, RecipeComponent):
+                ingredients.extend(comp.ingredients)
+            else:
+                ingredients.extend(
+                    Ingredient(name=m.name, quantity=m.quantity, unit=m.unit,
+                               require_tags=m.require_tags,
+                               equivalent_quantity=m.equivalent_quantity,
+                               equivalent_unit=m.equivalent_unit,
+                               byproduct=m.byproduct,
+                               product_ref=m.product_ref)
+                    for m in comp.materials
+                )
+        return ingredients
 
     @field_validator("servings", mode="before")
     @classmethod
@@ -223,17 +373,12 @@ class BaseRecipe(BaseModel):
         if isinstance(v, int):
             return v
         if isinstance(v, dict):
-            return ServingRange(**v)
-        return v
+            return ServingRange(**v)  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
+        return v  # type: ignore[return-value]  # ty:ignore[invalid-return-type]
 
-    @property
-    def all_ingredients(self) -> list[BaseIngredient]:
-        """Flatten all ingredients across all components."""
-        return [ing for comp in self.components for ing in comp.ingredients]
-
-    def size_up(self, factor: float) -> "BaseRecipe":
-        """Return a new BaseRecipe with all ingredient quantities scaled."""
-        return BaseRecipe(
+    def size_up(self, factor: float) -> Recipe:
+        """Return a new Recipe with all ingredient quantities scaled."""
+        return Recipe(
             name=self.name,
             components=[comp.scale(factor) for comp in self.components],
             instructions=self.instructions,
@@ -254,9 +399,9 @@ class BaseRecipe(BaseModel):
             tags=self.tags,
         )
 
-    def double(self) -> "BaseRecipe":
-        """Return a new BaseRecipe with all ingredient quantities doubled."""
-        return self.size_up(2)
+    def double(self) -> Recipe:
+        """Return a new Recipe with all ingredient quantities doubled."""
+        return self * 2  # type: ignore[return-value]  # ty:ignore[invalid-return-type]
 
     def _servings_bounds(self) -> tuple[int, int]:
         """Return (min, max) servings for cost calculations."""
@@ -382,18 +527,29 @@ class PriceRange(BaseModel):
         """Return the midpoint of the price range."""
         return (self.min_price + self.max_price) / 2
 
-    def __add__(self, other: "PriceRange") -> "PriceRange":
+    def __add__(self, other: PriceRange) -> PriceRange:
         """Add two price ranges together."""
         return PriceRange(
             min_price=self.min_price + other.min_price,
             max_price=self.max_price + other.max_price,
         )
 
+    def __mul__(self, factor: float) -> PriceRange:
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return PriceRange(
+            min_price=self.min_price * Decimal(str(factor)),
+            max_price=self.max_price * Decimal(str(factor)),
+        )
+
+    def __rmul__(self, factor: float) -> PriceRange:
+        return self * factor
+
 
 class IngredientCost(BaseModel):
     """Cost breakdown for a single ingredient."""
 
-    ingredient: BaseIngredient = Field(..., description="The ingredient being costed")
+    ingredient: Ingredient = Field(..., description="The ingredient being costed")
     price_range: PriceRange = Field(
         ..., description="Price range from all matching groceries"
     )
@@ -414,6 +570,19 @@ class RecipeCost(BaseModel):
         ...,
         description="Cost per serving (accounting for serving range)",
     )
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatibility aliases
+# ---------------------------------------------------------------------------
+
+BaseIngredient = Ingredient
+"""Alias for :class:`Ingredient`.  Provided for subclassing in applications
+that import ``from wright.models import BaseIngredient``."""
+
+BaseRecipe = Recipe
+"""Alias for :class:`Recipe`.  Provided for subclassing in applications
+that import ``from wright.models import BaseRecipe``."""
 
 
 # ---------------------------------------------------------------------------
