@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from wright.errors import (
-    PurchaseLoadError,
     IngredientNotFoundError,
+    PurchaseLoadError,
     RecipeCoreError,
     RecipeCostErrors,
     RecipeLoadError,

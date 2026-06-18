@@ -7,9 +7,9 @@ import pytest
 from wright.macros import calculate_recipe_macros
 from wright.models import (
     Ingredient,
-    Recipe,
     NutritionInfo,
     NutritionRegistry,
+    Recipe,
     RecipeComponent,
     ServingRange,
 )
@@ -346,7 +346,7 @@ class TestCalculateRecipeMacros:
         assert result.total.protein_g == pytest.approx(13.5 + 99, abs=0.1)
 
     def test_byproduct_and_zero_quantity_skipped(self, oats_nutrition):
-        """byproduct and zero-quantity ingredients contribute zero macros."""
+        """Byproduct and zero-quantity ingredients contribute zero macros."""
         registry: NutritionRegistry = {
             "Active": oats_nutrition,
             "Skipped": oats_nutrition,

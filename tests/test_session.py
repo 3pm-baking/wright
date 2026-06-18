@@ -20,7 +20,7 @@ class TestProductionItem:
         assert item.quantity == 2
 
     def test_recipe_backward_compat_access(self):
-        """recipe property still works as an alias for assembly."""
+        """Recipe property still works as an alias for assembly."""
         item = ProductionItem(assembly="Cake", quantity=2)
         assert item.recipe == "Cake"
 

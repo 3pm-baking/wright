@@ -17,10 +17,10 @@ from wright.errors import RecipeCostErrors, UnitConversionError
 from wright.matching import find_matching_purchases
 from wright.models import (
     Ingredient,
-    Recipe,
     IngredientCost,
-    RecipeComponent,
     Purchase,
+    Recipe,
+    RecipeComponent,
 )
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
@@ -155,7 +155,8 @@ class TestCalculateIngredientCost:
 
     def test_equivalent_quantity_packet_to_grams(self):
         """Packet ingredient with equivalent_quantity can be costed against
-        a per-gram grocery item."""
+        a per-gram grocery item.
+        """
         ing = Ingredient(
             name="Pudding",
             quantity=1,
@@ -172,7 +173,8 @@ class TestCalculateIngredientCost:
 
     def test_equivalent_quantity_not_used_when_compatible(self):
         """When grocery unit is already packet-compatible, use direct
-        packet matching over equivalent_quantity."""
+        packet matching over equivalent_quantity.
+        """
         ing = Ingredient(
             name="Pudding",
             quantity=2,
@@ -571,7 +573,8 @@ class TestCustomMatcherCosting:
 
     def test_custom_matcher_no_match(self, simple_purchases):
         """When custom matcher raises IngredientNotFoundError, cost
-        function reports it as a RecipeCostErrors."""
+        function reports it as a RecipeCostErrors.
+        """
         from wright.errors import IngredientNotFoundError
 
         def failing_matcher(ingredient, purchases):
