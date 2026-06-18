@@ -10,17 +10,17 @@ from datetime import date
 from decimal import Decimal
 
 from wright import (
+    DEFAULT_CATEGORY_RULES,
+    CategoryRule,
     Component,
     Ingredient,
     Material,
-    Recipe,
+    NutritionInfo,
+    PriceRange,
     ProductionItem,
     ProductionRun,
     Purchase,
-    CategoryRule,
-    DEFAULT_CATEGORY_RULES,
-    NutritionInfo,
-    PriceRange,
+    Recipe,
     RecipeComponent,
     ServingRange,
     Stock,
@@ -28,7 +28,7 @@ from wright import (
     are_compatible,
     calculate_item_costs,
     calculate_recipe_macros,
-    categorize_ingredient,
+    categorize_item,
     parse_quantity,
     ureg,
 )
@@ -177,20 +177,20 @@ assert round(float(grams.magnitude)) == 454  # 16 oz ≈ 453.59 g
 
 # ── 8. Ingredient categorization ────────────────────────────────────────────
 
-cat = categorize_ingredient("Rolled Oats")
+cat = categorize_item("Rolled Oats")
 assert cat is None  # no default rules match — returns None
 
-cat = categorize_ingredient("Spinach")
+cat = categorize_item("Spinach")
 assert cat is None  # same — no default rules
 
 # Using default rules (US grocery store layout)
-cat = categorize_ingredient("Spinach", rules=DEFAULT_CATEGORY_RULES)
+cat = categorize_item("Spinach", rules=DEFAULT_CATEGORY_RULES)
 assert cat == "Produce"
 
-cat = categorize_ingredient("Greek Yogurt", rules=DEFAULT_CATEGORY_RULES)
+cat = categorize_item("Greek Yogurt", rules=DEFAULT_CATEGORY_RULES)
 assert cat == "Dairy & Eggs"
 
-cat = categorize_ingredient("Olive Oil", rules=DEFAULT_CATEGORY_RULES)
+cat = categorize_item("Olive Oil", rules=DEFAULT_CATEGORY_RULES)
 assert cat == "Fats & Oils"
 
 # Custom rules for a different language or store layout
@@ -200,10 +200,10 @@ french_rules = [
     CategoryRule(category="Legumes", priority=2, keywords=["tomate", "epinard"]),
 ]
 
-cat = categorize_ingredient("lait", rules=french_rules)
+cat = categorize_item("lait", rules=french_rules)
 assert cat == "Frais"
 
-cat = categorize_ingredient("farine", rules=french_rules)
+cat = categorize_item("farine", rules=french_rules)
 assert cat == "Sec"
 
 # ── 9. Macro calculation ─────────────────────────────────────────────────────
@@ -428,7 +428,7 @@ lumberyard_rules = [
 ]
 
 for mat in all_project_materials[:8]:
-    cat = categorize_ingredient(mat.name, rules=lumberyard_rules)
+    cat = categorize_item(mat.name, rules=lumberyard_rules)
     print(f"  {mat.name} → {cat}")
 
 # Subclass Material for domain-specific metadata (not in the library)
