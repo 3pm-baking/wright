@@ -124,6 +124,7 @@ for item in menu.top_drivers:
 ```
 
 [Full grocery list example](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py) with 3 recipes, 16 grocery items, and formatted output.
+[Meal prep planner](https://github.com/3pm-baking/wright/blob/main/examples/meal_prep.py) — 5-day week, 2 cook sessions, macros per day.
 
 ## Allergens and dietary badges
 

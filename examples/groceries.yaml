@@ -125,3 +125,19 @@ purchases:
     price: 2.99
     purchased_date: 2026-01-02
     store: Farmers Market
+
+  - name: Chicken Breast
+    brand: Generic
+    quantity: 1000
+    unit: g
+    price: 8.99
+    purchased_date: 2026-01-17
+    store: Farmers Market
+
+  - name: Chickpeas
+    brand: Store Brand
+    quantity: 425
+    unit: g
+    price: 1.29
+    purchased_date: 2026-01-18
+    store: Farmers Market

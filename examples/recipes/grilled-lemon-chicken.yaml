@@ -1,0 +1,34 @@
+name: Grilled Lemon Chicken & Sweet Potato
+prep_time: 10
+cook_time: 25
+servings: 1
+
+components:
+  - name: Chicken & Seasoning
+    ingredients:
+      - name: Chicken Breast
+        quantity: 200
+        unit: g
+      - name: Lemon Juice
+        quantity: 1
+        unit: tbsp
+      - name: Garlic
+        quantity: 1
+        unit: clove
+      - name: Olive Oil
+        quantity: 1
+        unit: tbsp
+      - name: Salt
+        quantity: 0.5
+        unit: tsp
+
+  - name: Roast Sweet Potato
+    ingredients:
+      - name: Sweet Potato
+        quantity: 1
+        unit: each
+
+instructions:
+  - Season chicken with lemon juice, minced garlic, olive oil, and salt
+  - Grill chicken 6-7 min per side until 165 F internal
+  - Cube sweet potato, roast at 400 F for 20-25 min

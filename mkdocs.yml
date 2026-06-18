@@ -26,6 +26,7 @@ nav:
   - wright: index.md
   - Quickstart: guides/quickstart.md
   - Examples: guides/examples.md
+  - Meal Prep: guides/meal-prep.md
   - Customization: guides/customization.md
   - Domains:
       - Overview: guides/domains.md
