@@ -74,6 +74,7 @@ from wright.models import (
     ServingRange,
     Servings,
     categorize_ingredient,
+    categorize_item,
 )
 from wright.planning import (
     IngredientGroup,
@@ -136,6 +137,7 @@ __all__ = [
     "BaseIngredient",
     "BaseRecipe",
     "categorize_ingredient",
+    "categorize_item",
     # Errors
     "PurchaseLoadError",
     "IngredientNotFoundError",

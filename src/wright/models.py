@@ -607,19 +607,19 @@ class CategoryRule(BaseModel):
     )
 
 
-def categorize_ingredient(
-    ingredient_name: str,
+def categorize_item(
+    item_name: str,
     *,
     rules: list[CategoryRule] | None = None,
 ) -> str | None:
-    """Categorize an ingredient based on keyword rules.
+    """Categorize a BOM item based on keyword rules.
 
     Rules are evaluated in priority order (lowest first).  The first rule
-    whose keywords match the ingredient name (case-insensitive substring)
+    whose keywords match the item name (case-insensitive substring)
     determines the category.
 
     Args:
-        ingredient_name: Name of the ingredient to categorize.
+        item_name: Name of the item to categorize (ingredient, material, etc.).
         rules: Optional list of CategoryRule objects.  If None or empty,
             returns None (uncategorized).
 
@@ -629,13 +629,20 @@ def categorize_ingredient(
     if not rules:
         return None
 
-    name_lower = ingredient_name.lower()
+    name_lower = item_name.lower()
 
     for rule in sorted(rules, key=lambda r: r.priority):
         if any(keyword in name_lower for keyword in rule.keywords):
             return rule.category
 
     return None
+
+
+categorize_ingredient = categorize_item
+""".. deprecated::
+    Use :func:`categorize_item` instead.  This alias will be removed in a
+    future version.
+"""
 
 
 DEFAULT_CATEGORY_RULES: list[CategoryRule] = [
