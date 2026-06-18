@@ -5,7 +5,11 @@
 
 # wright
 
-[![wright](https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/wright-logo.png)](https://wright.germanbakingasheville.com)
+<p align="center">
+  <a href="https://wright.germanbakingasheville.com">
+    <img src="https://media.githubusercontent.com/media/3pm-baking/wright/main/docs/assets/wright-logo.png" width="225" alt="wright">
+  </a>
+</p>
 
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.
