@@ -247,7 +247,7 @@ price = multiplier_price(cost, 3)  # → $16.86
 Map ingredients to your kitchen's prep stations:
 
 ```python
-from wright import categorize_ingredient, CategoryRule
+from wright import categorize_item, CategoryRule
 
 station_rules = [
     CategoryRule(category="Butcher/Protein", priority=0,
@@ -261,7 +261,7 @@ station_rules = [
 ]
 
 for item in shopping.all_items:
-    station = categorize_ingredient(item.name, rules=station_rules)
+    station = categorize_item(item.name, rules=station_rules)
     print(f"  [{station}] {item.name}")
 ```
 
