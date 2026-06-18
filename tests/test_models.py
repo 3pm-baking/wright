@@ -7,15 +7,15 @@ from decimal import Decimal
 import pytest
 
 from wright.models import (
-    Ingredient,
-    Recipe,
     CategoryRule,
+    Ingredient,
     IngredientCost,
     PriceRange,
+    Purchase,
+    Recipe,
     RecipeComponent,
     RecipeCost,
     ServingRange,
-    Purchase,
     categorize_ingredient,
 )
 

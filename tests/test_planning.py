@@ -8,28 +8,27 @@ from decimal import Decimal
 import pytest
 
 from wright.errors import IngredientNotFoundError
+from wright.matching import chain, cheapest_picker
 from wright.models import (
-    Ingredient,
-    Recipe,
     DEFAULT_CATEGORY_RULES,
+    Ingredient,
+    Purchase,
+    Recipe,
     RecipeComponent,
     ServingRange,
-    Purchase,
 )
-from wright.matching import chain, cheapest_picker
 from wright.planning import (
     ShoppingList,
-    calculate_shopping_list_cost,
     analyze_menu,
+    calculate_shopping_list_cost,
     estimate_total_items,
     format_quantity,
     generate_shopping_list,
     group_shopping_items,
     normalize_volume_us,
 )
-from wright.supply import SupplyItem
 from wright.session import ProductionItem, ProductionRun
-
+from wright.supply import SupplyItem
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -368,7 +367,8 @@ class TestProductRefExpansion:
 
     def test_simple_product_ref_expanded(self):
         """A recipe referencing a sub-recipe via product_ref should include
-        the sub-recipe's ingredients, not the product_ref ingredient itself."""
+        the sub-recipe's ingredients, not the product_ref ingredient itself.
+        """
         sub = Recipe(
             name="Vanilla Sugar",
             components=[

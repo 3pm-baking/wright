@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from wright.supply import SupplyItem, Stock
-
+from wright.supply import Stock, SupplyItem
 
 # ---------------------------------------------------------------------------
 # SupplyItem
