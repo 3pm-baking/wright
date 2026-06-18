@@ -27,7 +27,7 @@ from wright.models import (
     Material,
     PurchasedItem,
     Recipe,
-    categorize_ingredient,
+    categorize_item,
 )
 from wright.session import ProductionItem, ProductionRun
 from wright.supply import SupplyItem
@@ -353,12 +353,13 @@ def group_shopping_items(
     """Group items by ingredient category.
 
     Args:
-        items: Items to group.
+        items: Shopping items to group.
         kitchen_items: Item names to exclude (e.g. ``{"water"}``).
             Defaults to an empty set.
         category_rules: Optional categorization rules for
-            :func:`categorize_ingredient`.  If not provided, items are
+            :func:`categorize_item`.  If not provided, items are
             placed in ``"Other"``.
+
 
     Returns:
         List of ``IngredientGroup`` sorted alphabetically.
@@ -371,7 +372,7 @@ def group_shopping_items(
     for item in items:
         if item.name.lower() in kitchen_items:
             continue
-        group_name = categorize_ingredient(item.name, rules=category_rules) or "Other"
+        group_name = categorize_item(item.name, rules=category_rules) or "Other"
         groups[group_name].append(item)
 
     sorted_groups: list[IngredientGroup] = []
