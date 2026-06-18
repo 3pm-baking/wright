@@ -1,0 +1,47 @@
+name: Quinoa Power Bowl
+prep_time: 15
+cook_time: 20
+servings:
+  min_servings: 2
+  max_servings: 4
+
+components:
+  - name: Grain Base
+    ingredients:
+      - name: Quinoa
+        quantity: 200
+        unit: g
+      - name: Vegetable Broth
+        quantity: 2
+        unit: cup
+
+  - name: Roasted Vegetables
+    ingredients:
+      - name: Sweet Potato
+        quantity: 2
+        unit: each
+      - name: Olive Oil
+        quantity: 2
+        unit: tbsp
+      - name: Salt
+        quantity: 1
+        unit: tsp
+        require_tags: [sea salt]
+
+  - name: Lemon Tahini Dressing
+    ingredients:
+      - name: Tahini
+        quantity: 3
+        unit: tbsp
+      - name: Lemon Juice
+        quantity: 2
+        unit: tbsp
+      - name: Garlic
+        quantity: 1
+        unit: clove
+
+instructions:
+  - Cook quinoa in vegetable broth, 20 min
+  - Cube and roast sweet potato at 400°F, 25 min
+  - Whisk dressing ingredients together
+  - Assemble bowls and drizzle dressing

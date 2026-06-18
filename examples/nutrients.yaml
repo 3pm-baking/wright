@@ -1,0 +1,113 @@
+# Nutrition registry — ingredient name → per-100g nutritional values
+# Used with calculate_recipe_macros(nutrition_registry=...)
+# Data sources: USDA FoodData Central, package labels
+nutrients:
+  - ingredient: Rolled Oats
+    nutrition:
+      protein_g: 13.5
+      carbs_g: 66.3
+      fat_g: 6.5
+      fiber_g: 10.6
+      kcal: 389
+    source:
+      usda-fdc: 173905
+
+  - ingredient: Greek Yogurt
+    nutrition:
+      protein_g: 10.0
+      carbs_g: 3.6
+      fat_g: 0.7
+      fiber_g: 0
+      kcal: 59
+    source:
+      usda-fdc: 173418
+
+  - ingredient: Honey
+    nutrition:
+      protein_g: 0.3
+      carbs_g: 82.4
+      fat_g: 0
+      fiber_g: 0
+      kcal: 304
+    source:
+      usda-fdc: 169640
+
+  - ingredient: Chia Seeds
+    nutrition:
+      protein_g: 16.5
+      carbs_g: 42.1
+      fat_g: 30.7
+      fiber_g: 34.4
+      kcal: 486
+    source:
+      usda-fdc: 170554
+
+  - ingredient: Almond Milk
+    nutrition:
+      protein_g: 0.4
+      carbs_g: 0.3
+      fat_g: 1.5
+      fiber_g: 0
+      kcal: 17
+    source:
+      usda-fdc: 174832
+
+  - ingredient: Quinoa
+    nutrition:
+      protein_g: 14.1
+      carbs_g: 64.2
+      fat_g: 6.1
+      fiber_g: 7.0
+      kcal: 368
+    source:
+      usda-fdc: 168917
+
+  - ingredient: Sweet Potato
+    nutrition:
+      protein_g: 1.6
+      carbs_g: 20.1
+      fat_g: 0.1
+      fiber_g: 3.0
+      kcal: 86
+    source:
+      usda-fdc: 168483
+
+  - ingredient: Olive Oil
+    nutrition:
+      protein_g: 0
+      carbs_g: 0
+      fat_g: 100.0
+      fiber_g: 0
+      kcal: 884
+    source:
+      usda-fdc: 171410
+
+  - ingredient: Tahini
+    nutrition:
+      protein_g: 17.0
+      carbs_g: 21.2
+      fat_g: 53.8
+      fiber_g: 9.2
+      kcal: 595
+    source:
+      usda-fdc: 174180
+
+  - ingredient: Lemon Juice
+    nutrition:
+      protein_g: 0.4
+      carbs_g: 3.2
+      fat_g: 0
+      fiber_g: 0.1
+      kcal: 12
+    source:
+      usda-fdc: 168155
+
+  - ingredient: Garlic
+    nutrition:
+      protein_g: 6.4
+      carbs_g: 33.1
+      fat_g: 0.5
+      fiber_g: 2.1
+      kcal: 149
+    source:
+      usda-fdc: 169230

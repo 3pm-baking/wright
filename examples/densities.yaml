@@ -1,0 +1,19 @@
+# Density data for converting between weight and volume units.
+# Add entries here when unit conversion fails for a specific ingredient.
+
+liquids:
+  "Lemon Juice": 1.03
+  "Olive Oil": 0.91
+  "Honey": 1.42
+  "Almond Milk": 1.04
+  "Vegetable Broth": 1.02
+
+volume_weights:
+  "Chia Seeds":
+    tbsp: 12.0
+  "Tahini":
+    tbsp: 15.0
+  "Salt":
+    tsp: 6.0
+  "Protein Powder":
+    tbsp: 8.0

@@ -1,0 +1,56 @@
+[project]
+name = "wright"
+version = "0.1.0"
+description = "Pure library for production planning, cost calculation, unit conversion, and shopping list aggregation."
+readme = "README.md"
+authors = [
+    { name = "Will Dean", email = "will@germanbakingasheville.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pint>=0.25",
+    "pydantic>=2.8.2,<3.0.0",
+    "pyyaml>=6.0.3",
+]
+keywords = [
+    "planning",
+    "costing",
+    "pricing",
+    "production",
+    "recipe",
+    "supply-chain",
+    "unit-conversion",
+    "shopping-list",
+    "allergen-detection",
+    "nutrition",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Repository = "https://github.com/3pm-baking/wright"
+Issues = "https://github.com/3pm-baking/wright/issues"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "mkdocstrings-python>=2.0.4",
+    "pytest>=9.0.3",
+    "zensical>=0.0.45",
+]

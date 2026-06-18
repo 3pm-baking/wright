@@ -1,0 +1,26 @@
+name: Green Smoothie
+prep_time: 5
+cook_time: 0
+servings: 1
+
+components:
+  - name: Smoothie
+    ingredients:
+      - name: Spinach
+        quantity: 2
+        unit: cup
+      - name: Banana
+        quantity: 1
+        unit: each
+      - name: Protein Powder
+        quantity: 1
+        unit: packet
+        equivalent_quantity: 30
+        equivalent_unit: g
+      - name: Almond Milk
+        quantity: 240
+        unit: ml
+
+instructions:
+  - Blend all ingredients until smooth
+  - Serve immediately
