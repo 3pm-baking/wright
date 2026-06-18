@@ -4,7 +4,7 @@ A 5-day work-week planner — define recipes, schedule your week, and generate
 a consolidated grocery list with daily macro totals.  All built on wright
 primitives composed into a custom `plan_week()` function.
 
-[`examples/meal_prep.py`](https://github.com/3pm-baking/wright/blob/main/examples/meal_prep.py)
+[`examples/meal_prep.py`](https://github.com/3pm-baking/wright/blob/e25becf/examples/meal_prep.py)
 — full runnable script.
 
 ## Scenario
@@ -53,7 +53,7 @@ lemon_chicken = Recipe(
 # ... green smoothie, quinoa power bowl, chickpea bowl
 ```
 
-See the [full script](https://github.com/3pm-baking/wright/blob/main/examples/meal_prep.py)
+See the [full script](https://github.com/3pm-baking/wright/blob/e25becf/examples/meal_prep.py)
 for all five.
 
 ## 2. Set your weekly schedule
