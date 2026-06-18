@@ -8,6 +8,8 @@ title: wright
   </a>
 </p>
 
+> **wright** /rīt/ — *noun*: a maker or builder. From Old English *wyrhta* (worker), as in *shipwright*, *wheelwright*, *playwright*. Here: a wright for your recipes, assemblies, and bills of materials.
+
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.
 
