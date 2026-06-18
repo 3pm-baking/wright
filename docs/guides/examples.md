@@ -150,9 +150,9 @@ Available pickers: `pinned_picker`, `cheapest_picker`, `recent_picker`,
 ## Ingredient categorization
 
 ```python
-from wright import categorize_ingredient, CategoryRule
+from wright import categorize_item, CategoryRule
 
-categorize_ingredient("Flour", rules=[
+categorize_item("Flour", rules=[
     CategoryRule(category="Aisle 1", priority=0, keywords=["flour", "sugar"]),
 ])
 # → str | None — category name, or None if no rules match
@@ -180,7 +180,7 @@ big_framing = framing * 1.5
 # → each material scaled by 1.5x
 
 # Classify with construction-specific categories
-from wright import CategoryRule, categorize_ingredient
+from wright import CategoryRule, categorize_item
 
 lumberyard_rules = [
     CategoryRule(category="Lumber", priority=0,
@@ -191,7 +191,7 @@ lumberyard_rules = [
                  keywords=["concrete", "cement", "mortar"]),
 ]
 
-cat = categorize_ingredient("2x6 Pressure-Treated", rules=lumberyard_rules)
+cat = categorize_item("2x6 Pressure-Treated", rules=lumberyard_rules)
 # → "Lumber"
 ```
 
@@ -211,3 +211,72 @@ stud = Lumber(name="2x4 Stud", quantity=12, unit="ft",
 
 See the [Domains guide](domains.md) for full construction, brewing, and
 manufacturing walkthroughs.
+
+## Grocery list
+
+[`examples/grocery_list.py`](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py)
+generates a consolidated shopping list from three recipes, groups items
+by store aisle, and enriches each line with costs.
+
+```python
+from datetime import date
+from wright import (
+    DEFAULT_CATEGORY_RULES,
+    ProductionRun, ProductionItem,
+    generate_shopping_list, group_shopping_items,
+    calculate_shopping_list_cost, analyze_menu,
+)
+
+recipes = {"Overnight Oats": oats, "Green Smoothie": smooth, "Quinoa Power Bowl": bowl}
+groceries = [
+    Purchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
+    # ... 15 more items
+]
+
+session = ProductionRun(
+    date=date(2026, 6, 20),
+    production=[
+        ProductionItem(assembly="Overnight Oats", quantity=3),
+        ProductionItem(assembly="Green Smoothie", quantity=2),
+        ProductionItem(assembly="Quinoa Power Bowl", quantity=1),
+    ],
+    target_dates=[date(2026, 6, 20)],
+)
+
+shopping = generate_shopping_list(session, recipes)
+grouped = group_shopping_items(shopping.all_items, category_rules=DEFAULT_CATEGORY_RULES)
+costs = calculate_shopping_list_cost(shopping, groceries, density_data=density_data)
+```
+
+```
+Shopping List
+--------------------------------------------------------------
+  Date: 2026-06-20
+  Making: 3x Overnight Oats, 2x Green Smoothie, 1x Quinoa Power Bowl
+
+   Dairy & Eggs  ----------------------------------------------
+  Greek Yogurt                    300 g
+
+   Dry Goods  -------------------------------------------------
+  Protein Powder                   30 g
+  Salt                            1 tsp [sea salt]
+
+   Fats & Oils  -----------------------------------------------
+  Olive Oil                      2 tbsp
+
+   Produce  ---------------------------------------------------
+  Banana                         2 each
+  Spinach                       1 quart
+
+   Specialty Items  -------------------------------------------
+  Chia Seeds                     3 tbsp
+
+--------------------------------------------------------------
+  Estimated total:                     $17.77
+
+  Top cost drivers
+  1. Greek Yogurt           $  2.69  (15%)
+  2. Sweet Potato           $  2.50  (14%)
+  ...
+--------------------------------------------------------------
+```
