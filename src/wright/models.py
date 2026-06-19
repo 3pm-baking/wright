@@ -490,6 +490,17 @@ class MacroPerServing(BaseModel):
 
     __rmul__ = __mul__
 
+    def __truediv__(self, divisor: float) -> "MacroPerServing":
+        if not isinstance(divisor, int | float):
+            return NotImplemented
+        return MacroPerServing(
+            protein_g=self.protein_g / divisor,
+            carbs_g=self.carbs_g / divisor,
+            fat_g=self.fat_g / divisor,
+            fiber_g=self.fiber_g / divisor,
+            kcal=self.kcal / divisor,
+        )
+
     @classmethod
     def zero(cls) -> "MacroPerServing":
         """Return a zero-valued instance for ``sum(..., start=MacroPerServing.zero())``."""
@@ -499,19 +510,23 @@ class MacroPerServing(BaseModel):
 class RecipeMacros(BaseModel):
     """Total and per-serving macro breakdown for a recipe.
 
-    Supports ``*`` to scale macros by batch quantity.
+    Supports ``*`` to scale macros by batch quantity.  ``per_serving`` is
+    derived from ``total / servings_used`` — no redundant storage.
     """
 
     recipe_name: str = Field(..., description="Name of the recipe")
     total: MacroPerServing = Field(..., description="Total macros for the full recipe")
-    per_serving: MacroPerServing | None = Field(
-        default=None,
-        description="Macros per serving (None if recipe has no serving info)",
-    )
     servings_used: int | None = Field(
         default=None,
         description="Number of servings used for per-serving calculation",
     )
+
+    @property
+    def per_serving(self) -> MacroPerServing | None:
+        """Macros per serving, derived from ``total / servings_used``."""
+        if self.servings_used is None or self.servings_used == 0:
+            return None
+        return self.total / self.servings_used
 
     def __mul__(self, factor: float) -> "RecipeMacros":
         if not isinstance(factor, int | float):
@@ -519,7 +534,6 @@ class RecipeMacros(BaseModel):
         return RecipeMacros(
             recipe_name=self.recipe_name,
             total=self.total * factor,
-            per_serving=self.per_serving * factor if self.per_serving else None,
             servings_used=self.servings_used,
         )
 
