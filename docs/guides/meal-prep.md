@@ -244,7 +244,7 @@ Weekly Meal Plan
 - **Change batch sizes** — adjust the quantity per meal (e.g. `("Overnight Oats", 2, "breakfast")`).
 - **Add more cook days** — extend the `mon_to_wed` set to three or four cook sessions.
 - **Add costs** — pipe the shopping list through `calculate_shopping_list_cost()` to get
-  per-item and total costs (see the [grocery list example](examples.md#grocery-list)).
+  per-item and total costs (see [Matching & Planning](core/planning.md#enriching-with-costs)).
 - **Custom categories** — pass your own `CategoryRule` list to `group_shopping_items()`
   for a store layout that matches where you shop.
 - **Different nutrition sources** — swap the inline lookup table for

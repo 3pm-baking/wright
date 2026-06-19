@@ -1,4 +1,4 @@
-# Beyond Food — Using wright for Any Domain
+# Beyond Food
 
 `wright` is built on domain-agnostic primitives: `Material`, `Component`,
 `ProductionItem`, and `PurchasedItem`.  This guide shows how to use them
@@ -219,6 +219,6 @@ stock, remaining = stock.use(framing.materials)
 
 ## See also
 
-- [Examples](examples.md) — copy-paste patterns for every workflow
-- [Customization guide](customization.md) — inject custom matchers, pickers, and callbacks
-- [API Reference](../api.md) — full function and model documentation
+- [Models](core/models.md) — defining assemblies and subclassing for your domain
+- [Matching & Planning](core/planning.md) — shopping lists, categorization, and cost enrichment
+- [Customization](customization.md) — inject custom matchers, converters, and callbacks
