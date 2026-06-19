@@ -32,7 +32,13 @@ from wright.models import (
 )
 from wright.session import ProductionItem, ProductionRun
 from wright.supply import SupplyItem
-from wright.units import VOLUME_UNITS, are_compatible, parse_quantity, ureg
+from wright.units import (
+    VOLUME_UNITS,
+    WEIGHT_UNITS,
+    are_compatible,
+    parse_quantity,
+    ureg,
+)
 
 # ---------------------------------------------------------------------------
 # Utility helpers
@@ -224,12 +230,34 @@ def _expand_all_ingredients(
 # ---------------------------------------------------------------------------
 
 
+def _default_key(material: Material) -> tuple:
+    """Default grouping key: ``(name, tuple(sorted(tags)))``."""
+    return (material.name, tuple(sorted(material.require_tags)))
+
+
+def _default_item_factory(
+    key: tuple,
+    quantity: float,
+    unit: str,
+    tags: set[str],
+) -> SupplyItem:
+    """Default item factory: ``SupplyItem(name=key[0], ...)``."""
+    return SupplyItem(
+        name=key[0],
+        quantity=quantity,
+        unit=unit,
+        tags=list(tags),
+    )
+
+
 def generate_shopping_list(
     session: ProductionRun,
     assemblies: Iterable[Assembly],
     *,
     volume_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
     display_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
+    key_fn: Callable[[Material], tuple] | None = None,
+    item_factory: Callable[[tuple, float, str, set[str]], SupplyItem] | None = None,
 ) -> ShoppingList:
     """Generate a consolidated shopping list from a production run.
 
@@ -250,6 +278,16 @@ def generate_shopping_list(
             called to format accumulated quantities for display.
             Defaults to :func:`normalize_volume_us` (gallons,
             quarts, floz, tbsp, tsp hierarchy).
+        key_fn: Optional function ``(material) -> tuple`` that produces a
+            grouping key.  Defaults to ``(name, tuple(sorted(tags)))``.
+            Use a custom key to group by vendor, department, or any
+            other material attribute.
+        item_factory: Optional function ``(key, quantity, unit, tags) -> SupplyItem``
+            that creates a display item from the accumulated data.  The
+            *key* argument is the grouping tuple produced by *key_fn*.
+            Defaults to ``SupplyItem(name=key[0], ...)``.  Use a custom
+            factory to produce subclass instances (e.g. ``ShoppingItem``
+            with a ``vendor`` field).
 
     Returns:
         ``ShoppingList`` with grouped items.
@@ -259,11 +297,12 @@ def generate_shopping_list(
             the *assemblies* (wrapped as ``RecipeLoadError`` in the full
             application).
     """
+    _key = key_fn or _default_key
+    _build = item_factory or _default_item_factory
     asm_map = _ensure_mapping(assemblies)
 
-    # (name, tags_tuple) → accumulated data
     ingredient_totals: dict[
-        tuple[str, tuple[str, ...]],
+        tuple,
         dict,
     ] = defaultdict(lambda: {"quantity": 0.0, "unit": None, "tags": set()})
 
@@ -282,10 +321,7 @@ def generate_shopping_list(
             if material.byproduct:
                 continue
 
-            key = (
-                material.name,
-                tuple(sorted(material.require_tags)),
-            )
+            key = _key(material)
 
             raw_qty, raw_unit = _apply_equivalent(material)
             qty_in, unit_in = (volume_normalizer or normalize_volume_to_ml)(
@@ -316,17 +352,17 @@ def generate_shopping_list(
             ingredient_totals[key]["tags"].update(material.require_tags)
 
     shopping_items: list[SupplyItem] = []
-    for (name, _tag_tuple), details in ingredient_totals.items():
+    for key, details in ingredient_totals.items():
         display_qty, display_unit = (display_normalizer or normalize_volume_us)(
             details["quantity"], details["unit"]
         )
 
         shopping_items.append(
-            SupplyItem(
-                name=name,
-                quantity=round(display_qty, 2),
-                unit=display_unit,
-                tags=list(details["tags"]),
+            _build(
+                key,
+                round(display_qty, 2),
+                display_unit,
+                details["tags"],
             )
         )
 
@@ -419,6 +455,44 @@ def normalize_volume_us(
 
     except Exception:
         return quantity, unit
+
+
+def normalize_metric(
+    quantity: float,
+    unit: str,
+) -> tuple[float, str]:
+    """Convert volume and weight units to metric display formats.
+
+    Rules:
+        - Volume: >= 1 L → liters, < 1 L → ml
+        - Weight: >= 1 kg → kg, < 1 kg → g
+        - Non-volume/non-weight units passed through unchanged.
+    """
+    unit_lower = unit.lower()
+
+    if unit_lower in VOLUME_UNITS:
+        try:
+            qty = ureg.Quantity(quantity, unit)
+            liters = qty.to("liter")
+            if liters.magnitude >= 1.0:
+                return round(liters.magnitude, 2), "L"
+            ml = qty.to("ml")
+            return round(float(ml.magnitude), 1), "ml"
+        except Exception:
+            return quantity, unit
+
+    if unit_lower in WEIGHT_UNITS:
+        try:
+            qty = ureg.Quantity(quantity, unit)
+            kg = qty.to("kg")
+            if kg.magnitude >= 1.0:
+                return round(kg.magnitude, 2), "kg"
+            g = qty.to("g")
+            return round(float(g.magnitude), 1), "g"
+        except Exception:
+            return quantity, unit
+
+    return quantity, unit
 
 
 # ---------------------------------------------------------------------------

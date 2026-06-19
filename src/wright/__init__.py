@@ -93,6 +93,7 @@ from wright.planning import (
     format_quantity,
     generate_shopping_list,
     group_shopping_items,
+    normalize_metric,
     normalize_volume_to_ml,
     normalize_volume_us,
 )
@@ -212,6 +213,7 @@ __all__ = [
     "format_quantity",
     "generate_shopping_list",
     "group_shopping_items",
+    "normalize_metric",
     "normalize_volume_us",
     "normalize_volume_to_ml",
     # Loader (optional YAML convenience)
