@@ -29,8 +29,6 @@ Pre-defined units: ``each``, ``packet``, ``pinch``, ``can``, ``clove``,
 
 from __future__ import annotations
 
-from typing import Any
-
 import pint
 
 # ── Unit classification sets (reusable across the package) ──────────────────
@@ -116,7 +114,7 @@ def parse_quantity(
     unit: str,
     *,
     ureg: pint.UnitRegistry | None = None,
-) -> Any:
+) -> pint.Quantity:
     """Parse a value and unit string into a pint Quantity.
 
     Args:

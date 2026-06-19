@@ -177,9 +177,8 @@ def calculate_ingredient_cost(
     purchase: PurchasedItem,
     *,
     density_data: DensityData | None = None,
-    converter: Callable[
-        [Material, PurchasedItem, DensityData], Decimal | None
-    ] | None = None,
+    converter: Callable[[Material, PurchasedItem, DensityData], Decimal | None]
+    | None = None,
     ureg: pint.UnitRegistry | None = None,
 ) -> Decimal:
     """Calculate the cost of a BOM item based on a purchase item's price.
@@ -455,13 +454,15 @@ def _cost_recipe_inner(
                     sub_recipe.net_weight_grams is None
                     or sub_recipe.net_weight_grams <= 0
                 ):
-                    raise RecipeCostErrors([
-                        ValueError(
-                            f"Sub-recipe '{ref_name}' has no "
-                            "net_weight_grams — cannot compute "
-                            "per-gram cost for product_ref."
-                        )
-                    ])
+                    raise RecipeCostErrors(
+                        [
+                            ValueError(
+                                f"Sub-recipe '{ref_name}' has no "
+                                "net_weight_grams — cannot compute "
+                                "per-gram cost for product_ref."
+                            )
+                        ]
+                    )
 
                 yield_dec = Decimal(str(sub_recipe.net_weight_grams))
                 per_gram = PriceRange(
