@@ -334,7 +334,7 @@ def plan_week(
             date(2026, 6, 19),
         ],
     )
-    shopping = generate_shopping_list(combined_run, recipes)
+    shopping = generate_shopping_list(combined_run, list(recipes.values()))
 
     # Per-recipe macros (ordered by first appearance in the week)
     recipe_set: dict[str, RecipeMacros] = {}
