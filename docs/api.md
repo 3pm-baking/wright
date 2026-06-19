@@ -143,7 +143,6 @@
       members:
         - ureg
         - parse_quantity
-        - convert_quantity
         - are_compatible
         - DISCRETE_UNITS
         - PINCH_UNITS
