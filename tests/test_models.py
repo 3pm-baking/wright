@@ -16,7 +16,7 @@ from wright.models import (
     RecipeComponent,
     RecipeCost,
     ServingRange,
-    categorize_ingredient,
+    categorize_item,
 )
 
 
@@ -347,24 +347,24 @@ class TestRecipeCost:
         assert rc.total_cost_range.min_price == Decimal("2.00")
 
 
-class TestCategorizeIngredient:
+class TestCategorizeItem:
     def test_no_rules(self):
-        assert categorize_ingredient("Spinach") is None
+        assert categorize_item("Spinach") is None
 
     def test_empty_rules(self):
-        assert categorize_ingredient("Spinach", rules=[]) is None
+        assert categorize_item("Spinach", rules=[]) is None
 
     def test_match(self):
         rules = [CategoryRule(category="Produce", priority=0, keywords=["spinach"])]
-        assert categorize_ingredient("Spinach", rules=rules) == "Produce"
+        assert categorize_item("Spinach", rules=rules) == "Produce"
 
     def test_case_insensitive(self):
         rules = [CategoryRule(category="Produce", priority=0, keywords=["spinach"])]
-        assert categorize_ingredient("SPINACH", rules=rules) == "Produce"
+        assert categorize_item("SPINACH", rules=rules) == "Produce"
 
     def test_substring_match(self):
         rules = [CategoryRule(category="Produce", priority=0, keywords=["blueberr"])]
-        assert categorize_ingredient("Blueberries", rules=rules) == "Produce"
+        assert categorize_item("Blueberries", rules=rules) == "Produce"
 
     def test_priority_order(self):
         rules = [
@@ -372,7 +372,7 @@ class TestCategorizeIngredient:
             CategoryRule(category="Frozen", priority=1, keywords=["frozen"]),
         ]
         # "Frozen Spinach" should match Frozen (priority 1) before Produce (priority 2)
-        assert categorize_ingredient("Frozen Spinach", rules=rules) == "Frozen"
+        assert categorize_item("Frozen Spinach", rules=rules) == "Frozen"
 
     def test_first_priority_wins(self):
         rules = [
@@ -380,26 +380,20 @@ class TestCategorizeIngredient:
             CategoryRule(category="B", priority=0, keywords=["spinach"]),
         ]
         # Both priority 0, first match wins
-        assert categorize_ingredient("Spinach", rules=rules) == "A"
+        assert categorize_item("Spinach", rules=rules) == "A"
 
     def test_default_rules(self):
         from wright.models import DEFAULT_CATEGORY_RULES
 
+        assert categorize_item("Spinach", rules=DEFAULT_CATEGORY_RULES) == "Produce"
         assert (
-            categorize_ingredient("Spinach", rules=DEFAULT_CATEGORY_RULES) == "Produce"
-        )
-        assert (
-            categorize_ingredient("Greek Yogurt", rules=DEFAULT_CATEGORY_RULES)
+            categorize_item("Greek Yogurt", rules=DEFAULT_CATEGORY_RULES)
             == "Dairy & Eggs"
         )
         assert (
-            categorize_ingredient("Olive Oil", rules=DEFAULT_CATEGORY_RULES)
-            == "Fats & Oils"
+            categorize_item("Olive Oil", rules=DEFAULT_CATEGORY_RULES) == "Fats & Oils"
         )
-        assert (
-            categorize_ingredient("Canned Pears", rules=DEFAULT_CATEGORY_RULES)
-            == "Pantry"
-        )
+        assert categorize_item("Canned Pears", rules=DEFAULT_CATEGORY_RULES) == "Pantry"
 
 
 class TestRecipeDescriptionTags:

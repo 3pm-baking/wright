@@ -40,6 +40,21 @@ def _recipe(*ingredients: Ingredient) -> Recipe:
     )
 
 
+def _name_props(ingredient: Ingredient) -> frozenset[str]:
+    """Name-based dietary property callback for tests."""
+    name = ingredient.name.lower()
+    props: set[str] = set()
+    if name.startswith("gf "):
+        props.add("gluten-free")
+    if name.startswith("vegan "):
+        props.add("vegan")
+    if "almond flour" in name:
+        props.add("gluten-free")
+    if "almond milk" in name:
+        props.add("vegan")
+    return frozenset(props)
+
+
 # ── Allergen detection ──────────────────────────────────────────────────────
 
 
@@ -100,7 +115,10 @@ def _recipe(*ingredients: Ingredient) -> Recipe:
 )
 def test_detect_allergens(ingredients, expected, allergy_map):
     recipe = _recipe(*ingredients)
-    assert detect_allergens(recipe, allergy_map) == expected
+    assert (
+        detect_allergens(recipe, allergy_map, ingredient_properties=_name_props)
+        == expected
+    )
 
 
 class TestDetectAllergensFromNames:
@@ -150,7 +168,9 @@ class TestDetectAllergensFromNames:
 )
 def test_detect_dietary_properties(ingredients, expected):
     recipe = _recipe(*ingredients)
-    assert detect_dietary_properties(recipe) == expected
+    assert (
+        detect_dietary_properties(recipe, ingredient_properties=_name_props) == expected
+    )
 
 
 class TestBadgeDisplay:
