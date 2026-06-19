@@ -455,7 +455,10 @@ class NutritionInfo(BaseModel):
 
 
 class MacroPerServing(BaseModel):
-    """Macro breakdown for a single serving."""
+    """Macro breakdown for a single serving.
+
+    Supports ``+`` (add), ``*`` (scale), and ``sum()`` via ``.zero()``.
+    """
 
     protein_g: float = Field(..., description="Protein in grams")
     carbs_g: float = Field(..., description="Carbohydrates in grams")
@@ -463,9 +466,41 @@ class MacroPerServing(BaseModel):
     fiber_g: float = Field(..., description="Dietary fiber in grams")
     kcal: float = Field(..., description="Energy in kilocalories")
 
+    def __add__(self, other: "MacroPerServing") -> "MacroPerServing":
+        if not isinstance(other, MacroPerServing):
+            return NotImplemented
+        return MacroPerServing(
+            protein_g=self.protein_g + other.protein_g,
+            carbs_g=self.carbs_g + other.carbs_g,
+            fat_g=self.fat_g + other.fat_g,
+            fiber_g=self.fiber_g + other.fiber_g,
+            kcal=self.kcal + other.kcal,
+        )
+
+    def __mul__(self, factor: float) -> "MacroPerServing":
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return MacroPerServing(
+            protein_g=self.protein_g * factor,
+            carbs_g=self.carbs_g * factor,
+            fat_g=self.fat_g * factor,
+            fiber_g=self.fiber_g * factor,
+            kcal=self.kcal * factor,
+        )
+
+    __rmul__ = __mul__
+
+    @classmethod
+    def zero(cls) -> "MacroPerServing":
+        """Return a zero-valued instance for ``sum(..., start=MacroPerServing.zero())``."""
+        return cls(protein_g=0, carbs_g=0, fat_g=0, fiber_g=0, kcal=0)
+
 
 class RecipeMacros(BaseModel):
-    """Total and per-serving macro breakdown for a recipe."""
+    """Total and per-serving macro breakdown for a recipe.
+
+    Supports ``*`` to scale macros by batch quantity.
+    """
 
     recipe_name: str = Field(..., description="Name of the recipe")
     total: MacroPerServing = Field(..., description="Total macros for the full recipe")
@@ -477,6 +512,18 @@ class RecipeMacros(BaseModel):
         default=None,
         description="Number of servings used for per-serving calculation",
     )
+
+    def __mul__(self, factor: float) -> "RecipeMacros":
+        if not isinstance(factor, int | float):
+            return NotImplemented
+        return RecipeMacros(
+            recipe_name=self.recipe_name,
+            total=self.total * factor,
+            per_serving=self.per_serving * factor if self.per_serving else None,
+            servings_used=self.servings_used,
+        )
+
+    __rmul__ = __mul__
 
 
 class FoodRecord(BaseModel):

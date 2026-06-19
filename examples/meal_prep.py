@@ -351,23 +351,12 @@ def plan_week(
                 recipe_order.append(name)
                 seen.add(name)
 
-    # Daily macros
+    # Daily macros — MacroPerServing supports + and *, so we can sum cleanly
     daily: dict[str, MacroPerServing] = {}
     for day, meals in schedule.items():
-        total_p = total_c = total_fat = total_fib = total_kcal = 0.0
-        for name, qty, _slot in meals:
-            rmac = recipe_set[name]
-            total_p += rmac.total.protein_g * qty
-            total_c += rmac.total.carbs_g * qty
-            total_fat += rmac.total.fat_g * qty
-            total_fib += rmac.total.fiber_g * qty
-            total_kcal += rmac.total.kcal * qty
-        daily[day] = MacroPerServing(
-            protein_g=round(total_p, 1),
-            carbs_g=round(total_c, 1),
-            fat_g=round(total_fat, 1),
-            fiber_g=round(total_fib, 1),
-            kcal=round(total_kcal, 1),
+        daily[day] = sum(
+            (recipe_set[name].total * qty for name, qty, _ in meals),
+            start=MacroPerServing.zero(),
         )
 
     return WeekPlan(

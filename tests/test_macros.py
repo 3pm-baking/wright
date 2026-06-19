@@ -7,6 +7,7 @@ import pytest
 from wright.macros import calculate_recipe_macros
 from wright.models import (
     Ingredient,
+    MacroPerServing,
     NutritionInfo,
     NutritionRegistry,
     Recipe,
@@ -512,3 +513,105 @@ class TestCalculateRecipeMacros:
         assert result.total.protein_g == 10.0
         # Per serving = 10g / 5 = 2g
         assert result.per_serving.protein_g == 2.0
+
+
+# ── MacroPerServing arithmetic tests ─────────────────────────────────────────
+
+
+class TestMacroPerServingArithmetic:
+    def test_add(self):
+        a = MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200)
+        b = MacroPerServing(protein_g=5, carbs_g=10, fat_g=2, fiber_g=1, kcal=100)
+        c = a + b
+        assert c.protein_g == 15
+        assert c.carbs_g == 30
+        assert c.fat_g == 7
+        assert c.fiber_g == 4
+        assert c.kcal == 300
+
+    def test_mul(self):
+        a = MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200)
+        b = a * 3
+        assert b.protein_g == 30
+        assert b.carbs_g == 60
+        assert b.fat_g == 15
+        assert b.fiber_g == 9
+        assert b.kcal == 600
+
+    def test_rmul(self):
+        a = MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200)
+        b = 0.5 * a
+        assert b.protein_g == 5
+        assert b.carbs_g == 10
+        assert b.fat_g == 2.5
+        assert b.fiber_g == 1.5
+        assert b.kcal == 100
+
+    def test_zero(self):
+        z = MacroPerServing.zero()
+        assert z.protein_g == 0
+        assert z.carbs_g == 0
+        assert z.fat_g == 0
+        assert z.fiber_g == 0
+        assert z.kcal == 0
+
+    def test_sum_with_zero(self):
+        items = [
+            MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200),
+            MacroPerServing(protein_g=5, carbs_g=10, fat_g=2, fiber_g=1, kcal=100),
+            MacroPerServing(protein_g=2, carbs_g=0, fat_g=1, fiber_g=0, kcal=20),
+        ]
+        total = sum(items, start=MacroPerServing.zero())
+        assert total.protein_g == 17
+        assert total.carbs_g == 30
+        assert total.fat_g == 8
+        assert total.fiber_g == 4
+        assert total.kcal == 320
+
+    def test_chained_scale_and_add(self):
+        a = MacroPerServing(protein_g=20, carbs_g=30, fat_g=10, fiber_g=5, kcal=300)
+        total = a * 3 + a * 2
+        # 3 * a + 2 * a = 5 * a
+        assert total.protein_g == 100
+        assert total.carbs_g == 150
+        assert total.fat_g == 50
+        assert total.fiber_g == 25
+        assert total.kcal == 1500
+
+
+# ── RecipeMacros arithmetic tests ────────────────────────────────────────────
+
+
+class TestRecipeMacrosArithmetic:
+    def test_mul_scales_total(self):
+        from wright.models import RecipeMacros
+
+        rm = RecipeMacros(
+            recipe_name="Test",
+            total=MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200),
+            per_serving=MacroPerServing(protein_g=5, carbs_g=10, fat_g=2.5, fiber_g=1.5, kcal=100),
+            servings_used=2,
+        )
+        scaled = rm * 3
+        assert scaled.recipe_name == "Test"
+        assert scaled.total.protein_g == 30
+        assert scaled.total.carbs_g == 60
+        assert scaled.total.fat_g == 15
+        assert scaled.total.kcal == 600
+        assert scaled.per_serving.protein_g == 15
+        assert scaled.per_serving.kcal == 300
+        assert scaled.servings_used == 2
+
+    def test_mul_preserves_none_per_serving(self):
+        from wright.models import RecipeMacros
+
+        rm = RecipeMacros(
+            recipe_name="Bulk",
+            total=MacroPerServing(protein_g=50, carbs_g=100, fat_g=20, fiber_g=8, kcal=800),
+            per_serving=None,
+            servings_used=None,
+        )
+        scaled = rm * 0.5
+        assert scaled.total.protein_g == 25
+        assert scaled.per_serving is None
+        assert scaled.servings_used is None
