@@ -24,7 +24,6 @@
         - RecipeCost
         - CategoryRule
         - categorize_item
-        - categorize_ingredient
         - DEFAULT_CATEGORY_RULES
         - BaseIngredient
         - BaseRecipe

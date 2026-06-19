@@ -332,5 +332,5 @@ for item in shopping.all_items:
 - Use `analyze_menu` to track food cost % week over week
 - Wire `calculate_recipe_cost` into your menu engineering spreadsheet
 
-`wright` handles the math.  The application — ordering, scheduling, POS, 
+`wright` handles the math.  The application — ordering, scheduling, POS,
 dashboards — is yours to build.
