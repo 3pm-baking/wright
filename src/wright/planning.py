@@ -41,12 +41,7 @@ from wright.units import VOLUME_UNITS, are_compatible, parse_quantity, ureg
 def _ensure_mapping(
     assemblies: Iterable[Assembly],
 ) -> Mapping[str, Assembly]:
-    """Build a ``{name: assembly}`` map keyed by ``.name``.
-
-    Handles ``Mapping`` inputs transparently (iterates values, not keys).
-    """
-    if isinstance(assemblies, Mapping):
-        assemblies = list(assemblies.values())  # type: ignore[assignment]  # ty:ignore[invalid-assignment]
+    """Build a ``{name: assembly}`` map keyed by ``.name``."""
     return {a.name: a for a in assemblies}
 
 
@@ -243,9 +238,9 @@ def generate_shopping_list(
 
     Args:
         session: The production run to generate a list for.
-        assemblies: Assemblies keyed by ``.name`` (list, tuple, etc.).
-            Must contain every assembly referenced by the session's
-            production items.
+        assemblies: Assemblies referenced by production items (list or
+            tuple). Must contain every assembly referenced by the
+            session's production items.
         volume_normalizer: Optional function ``(quantity, unit) -> (quantity, unit)``
             called on each material to normalize units for accumulation.
             Defaults to :func:`normalize_volume_to_ml` (converts volume

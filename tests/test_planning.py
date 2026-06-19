@@ -35,8 +35,8 @@ from wright.supply import SupplyItem
 
 @pytest.fixture
 def sample_recipes():
-    return {
-        "Oats": Recipe(
+    return [
+        Recipe(
             name="Oats",
             components=[
                 RecipeComponent(
@@ -51,7 +51,7 @@ def sample_recipes():
             cook_time=0,
             servings=1,
         ),
-        "Smoothie": Recipe(
+        Recipe(
             name="Smoothie",
             components=[
                 RecipeComponent(
@@ -66,7 +66,7 @@ def sample_recipes():
             cook_time=0,
             servings=1,
         ),
-    }
+    ]
 
 
 @pytest.fixture
@@ -191,8 +191,8 @@ class TestGenerateShoppingList:
 
 class TestEstimateTotalItems:
     def test_range_servings(self):
-        recipes = {
-            "Cake": Recipe(
+        recipes = [
+            Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
@@ -206,7 +206,7 @@ class TestEstimateTotalItems:
                 cook_time=5,
                 servings=ServingRange(min_servings=4, max_servings=8),
             ),
-        }
+        ]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="Cake", quantity=2)],
@@ -216,8 +216,8 @@ class TestEstimateTotalItems:
         assert estimate_total_items(session, recipes) == 12
 
     def test_exact_servings(self):
-        recipes = {
-            "Cake": Recipe(
+        recipes = [
+            Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
@@ -231,7 +231,7 @@ class TestEstimateTotalItems:
                 cook_time=5,
                 servings=10,
             ),
-        }
+        ]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="Cake", quantity=1)],
@@ -288,19 +288,21 @@ class TestAddCostsToShoppingList:
         self, sample_session, sample_recipes, sample_purchases, density_data
     ):
         # Add an ingredient with no matching grocery
-        recipes_with_unknown = dict(sample_recipes)
-        recipes_with_unknown["Mystery"] = Recipe(
-            name="Mystery",
-            components=[
-                RecipeComponent(
-                    name="X",
-                    ingredients=[
-                        Ingredient(name="Unobtainium", quantity=1, unit="g"),
-                    ],
-                )
-            ],
-            prep_time=5,
-            cook_time=5,
+        recipes_with_unknown = list(sample_recipes)
+        recipes_with_unknown.append(
+            Recipe(
+                name="Mystery",
+                components=[
+                    RecipeComponent(
+                        name="X",
+                        ingredients=[
+                            Ingredient(name="Unobtainium", quantity=1, unit="g"),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=5,
+            )
         )
         session = ProductionRun(
             date=date(2026, 6, 1),
@@ -335,8 +337,8 @@ class TestAnalyzeMenu:
         assert len(result.missing_ingredients) == 0
 
     def test_missing_ingredients(self, sample_purchases):
-        recipes = {
-            "Mystery": Recipe(
+        recipes = [
+            Recipe(
                 name="Mystery",
                 components=[
                     RecipeComponent(
@@ -349,7 +351,7 @@ class TestAnalyzeMenu:
                 prep_time=5,
                 cook_time=5,
             ),
-        }
+        ]
         result = analyze_menu(
             production=[ProductionItem(assembly="Mystery", quantity=1)],
             assemblies=recipes,
@@ -403,7 +405,7 @@ class TestProductRefExpansion:
             prep_time=30,
             cook_time=60,
         )
-        recipes = {"Cake": main, "Vanilla Sugar": sub}
+        recipes = [main, sub]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="Cake", quantity=1)],
@@ -442,7 +444,7 @@ class TestProductRefExpansion:
             prep_time=30,
             cook_time=60,
         )
-        recipes = {"Cake": main}
+        recipes = [main]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="Cake", quantity=1)],
@@ -486,7 +488,7 @@ class TestProductRefExpansion:
             cook_time=0,
             net_weight_grams=100,
         )
-        recipes = {"A": a, "B": b}
+        recipes = [a, b]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="A", quantity=1)],
@@ -506,8 +508,8 @@ class TestEquivalentQuantityAggregation:
 
     def test_packet_and_gram_merged(self):
         """1 packet (37g) + 74g should merge into 111g."""
-        recipes = {
-            "Cake": Recipe(
+        recipes = [
+            Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
@@ -531,7 +533,7 @@ class TestEquivalentQuantityAggregation:
                 prep_time=5,
                 cook_time=0,
             ),
-        }
+        ]
         session = ProductionRun(
             date=date(2026, 6, 1),
             production=[ProductionItem(assembly="Cake", quantity=1)],
@@ -606,8 +608,8 @@ class TestCustomMatcher:
         def picky_matcher(ingredient, purchases):
             raise IngredientNotFoundError(ingredient.name)
 
-        recipes = {
-            "Cake": Recipe(
+        recipes = [
+            Recipe(
                 name="Cake",
                 components=[
                     RecipeComponent(
@@ -620,7 +622,7 @@ class TestCustomMatcher:
                 prep_time=5,
                 cook_time=0,
             ),
-        }
+        ]
         shopping = generate_shopping_list(
             ProductionRun(
                 date=date(2026, 6, 1),

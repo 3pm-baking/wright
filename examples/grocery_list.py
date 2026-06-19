@@ -150,11 +150,7 @@ session = ProductionRun(
     target_dates=[date(2026, 6, 20)],
 )
 
-recipes = {
-    "Overnight Oats": overnight_oats,
-    "Green Smoothie": green_smoothie,
-    "Quinoa Power Bowl": power_bowl,
-}
+recipes = [overnight_oats, green_smoothie, power_bowl]
 
 # ── Generate shopping list ─────────────────────────────────────────────
 
