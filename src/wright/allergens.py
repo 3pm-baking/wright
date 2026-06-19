@@ -28,50 +28,51 @@ BADGE_IMPLIES: dict[str, set[str]] = {
 
 # ── Default dietary keyword sets (English food vocabulary) ──────────────────
 
-DEFAULT_NON_VEGAN_KEYS: frozenset[str] = frozenset(
-    {
-        "egg",
-        "honey",
-        "gelatin",
-        "lard",
-        "meat",
-        "chicken",
-        "beef",
-        "pork",
-        "fish",
-        "shrimp",
-        "anchovy",
-        "milk",
-        "cream",
-        "butter",
-        "cheese",
-        "yogurt",
-        "sour cream",
-        "cream cheese",
-        "whey",
-        "casein",
-    }
-)
+DEFAULT_NON_VEGAN_KEYS: frozenset[str] = frozenset({
+    "egg",
+    "honey",
+    "gelatin",
+    "lard",
+    "meat",
+    "chicken",
+    "beef",
+    "pork",
+    "fish",
+    "shrimp",
+    "anchovy",
+    "milk",
+    "cream",
+    "butter",
+    "cheese",
+    "yogurt",
+    "sour cream",
+    "cream cheese",
+    "whey",
+    "casein",
+})
 """Default ingredient-name keywords that disqualify vegan."""
 
-DEFAULT_DAIRY_KEYS: frozenset[str] = frozenset(
-    {
-        "milk",
-        "cream",
-        "butter",
-        "cheese",
-        "yogurt",
-        "sour cream",
-        "cream cheese",
-        "whey",
-        "casein",
-    }
-)
+DEFAULT_DAIRY_KEYS: frozenset[str] = frozenset({
+    "milk",
+    "cream",
+    "butter",
+    "cheese",
+    "yogurt",
+    "sour cream",
+    "cream cheese",
+    "whey",
+    "casein",
+})
 """Default ingredient-name keywords that disqualify dairy-free."""
 
-DEFAULT_GLUTEN_KEYS: frozenset[str] = frozenset(
-    {"flour", "wheat", "barley", "rye", "spelt", "semolina"}
-)
+DEFAULT_GLUTEN_KEYS: frozenset[str] = frozenset({
+    "flour",
+    "wheat",
+    "barley",
+    "rye",
+    "spelt",
+    "semolina",
+})
 """Default ingredient-name keywords that disqualify gluten-free."""
 
 
@@ -142,9 +143,15 @@ def detect_allergens(
     Returns:
         Sorted list of allergen display names.
     """
-    dairy_keys = frozenset(
-        {"butter", "cream", "cheese", "milk", "yogurt", "cream cheese", "sour cream"}
-    )
+    dairy_keys = frozenset({
+        "butter",
+        "cream",
+        "cheese",
+        "milk",
+        "yogurt",
+        "cream cheese",
+        "sour cream",
+    })
     wheat_keys = frozenset({"flour", "wheat"})
 
     found: set[str] = set()
@@ -204,9 +211,15 @@ def detect_allergens_from_names(
     Returns:
         Sorted list of allergen display names.
     """
-    dairy_keys = frozenset(
-        {"butter", "cream", "cheese", "milk", "yogurt", "cream cheese", "sour cream"}
-    )
+    dairy_keys = frozenset({
+        "butter",
+        "cream",
+        "cheese",
+        "milk",
+        "yogurt",
+        "cream cheese",
+        "sour cream",
+    })
     wheat_keys = frozenset({"flour", "wheat"})
 
     found: set[str] = set()

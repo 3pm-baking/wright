@@ -57,9 +57,7 @@ class TestFindMatchingGroceries:
         assert all(g.name == "Sugar" for g in result)
 
     def test_with_require_tags(self, purchases):
-        ing = Ingredient(
-            name="Sugar", quantity=200, unit="g", require_tags=["organic"]
-        )
+        ing = Ingredient(name="Sugar", quantity=200, unit="g", require_tags=["organic"])
         result = find_matching_purchases(ing, purchases)
         assert len(result) == 1
         assert result[0].tag_set == {"organic"}
@@ -71,9 +69,7 @@ class TestFindMatchingGroceries:
         assert "Ghost Flour" in str(exc.value)
 
     def test_tag_mismatch_raises(self, purchases):
-        ing = Ingredient(
-            name="Sugar", quantity=200, unit="g", require_tags=["vegan"]
-        )
+        ing = Ingredient(name="Sugar", quantity=200, unit="g", require_tags=["vegan"])
         with pytest.raises(IngredientNotFoundError) as exc:
             find_matching_purchases(ing, purchases)
         assert "Sugar" in str(exc.value)
@@ -118,9 +114,7 @@ class TestMatchAllIngredients:
             Ingredient(
                 name="Butter", quantity=100, unit="g", require_tags=["unsalted"]
             ),
-            Ingredient(
-                name="Butter", quantity=100, unit="g", require_tags=["salted"]
-            ),
+            Ingredient(name="Butter", quantity=100, unit="g", require_tags=["salted"]),
         ]
         result = match_all_ingredients(ingredients, purchases)
         # Two different keys for same name with different tags
@@ -251,9 +245,7 @@ class TestPinnedPicker:
 
 class TestChain:
     def test_returns_first_non_none(self):
-        pinned = Purchase(
-            name="Flour", quantity=1000, unit="g", price=Decimal("5")
-        )
+        pinned = Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("5"))
         cheap = Purchase(name="Flour", quantity=500, unit="g", price=Decimal("2"))
         ing = Ingredient(name="Flour", quantity=300, unit="g")
 

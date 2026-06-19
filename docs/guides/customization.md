@@ -10,13 +10,17 @@ Add domain-specific fields without losing library compatibility:
 ```python
 from wright import Material, Ingredient, Recipe
 
+
 class Lumber(Material):
     """Construction material with building-specific fields."""
+
     grade: str | None = None
     waste_factor: float = 0.10
 
+
 class MyIngredient(Ingredient):
     origin: str = "local"
+
 
 class MyRecipe(Recipe):
     sale_price: Decimal | None = None
@@ -32,16 +36,19 @@ The default matcher does exact name matching.  Inject a fuzzy matcher:
 ```python
 from wright import calculate_recipe_cost, find_matching_purchases
 
+
 def fuzzy_matcher(ingredient, groceries):
     # Try exact match first, then substring fallback
     exact = [g for g in groceries if g.name == ingredient.name]
     if exact:
         return [g for g in exact if g.matches_requirements(ingredient.require_tags)]
     return [
-        g for g in groceries
+        g
+        for g in groceries
         if ingredient.name.lower() in g.name.lower()
         and g.matches_requirements(ingredient.require_tags)
     ]
+
 
 cost = calculate_recipe_cost(recipe, groceries, matcher=fuzzy_matcher)
 ```
@@ -67,10 +74,12 @@ Insert a custom converter before the built-in cascade:
 ```python
 from wright import calculate_ingredient_cost
 
+
 def my_converter(ingredient, grocery, density_data):
     if ingredient.unit == "box" and grocery.unit == "box":
         return grocery.price / Decimal(grocery.quantity) * Decimal(ingredient.quantity)
     return None  # fall through to built-in cascade
+
 
 cost = calculate_ingredient_cost(ingredient, grocery, converter=my_converter)
 ```
@@ -81,6 +90,7 @@ Override keyword-based detection with a callback backed by your own data:
 
 ```python
 from wright import detect_dietary_properties
+
 
 def my_properties(ingredient):
     """Read dietary properties from our purchase database."""
@@ -93,6 +103,7 @@ def my_properties(ingredient):
     if "gluten-free" in purchase.tags:
         props.add("gluten-free")
     return frozenset(props)
+
 
 badges = detect_dietary_properties(recipe, ingredient_properties=my_properties)
 ```
@@ -112,16 +123,20 @@ Swap how accumulated volumes are displayed:
 ```python
 from wright import generate_shopping_list
 
+
 def metric_display(qty, unit):
     """Always display in ml or liters, never gallons/quarts."""
     from wright.units import ureg
+
     ml = ureg.Quantity(qty, unit).to("ml")
     if ml.magnitude >= 1000:
         return (round(ml.to("liter").magnitude, 2), "liter")
     return (round(ml.magnitude, 0), "ml")
 
+
 shopping = generate_shopping_list(
-    session, recipes,
+    session,
+    recipes,
     display_normalizer=metric_display,
 )
 ```
@@ -137,10 +152,12 @@ registry = {
     "Rolled Oats": NutritionInfo(protein_g=13.5, carbs_g=66.3, fat_g=6.5, kcal=389),
 }
 
+
 # Or a live lookup fallback
 def usda_lookup(name: str) -> NutritionInfo | None:
     result = fetch_from_usda(name)
     return NutritionInfo(**result) if result else None
+
 
 macros = calculate_recipe_macros(
     recipe,

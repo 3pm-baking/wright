@@ -7,6 +7,8 @@ Usage:
     uv run python examples/meal_prep.py
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
@@ -172,32 +174,30 @@ chickpea_bowl = Recipe(
 
 # ── Nutrition registry (per 100g values) ───────────────────────────────
 
-NUTRITION: dict[str, tuple[float, float, float, float, float]] = (
-    {
-        "Rolled Oats": (13.5, 66.3, 6.5, 10.6, 389),
-        "Greek Yogurt": (10.0, 3.6, 0.7, 0.0, 59),
-        "Honey": (0.3, 82.4, 0.0, 0.0, 304),
-        "Chia Seeds": (16.5, 42.1, 30.7, 34.4, 486),
-        "Almond Milk": (0.4, 0.3, 1.5, 0.0, 17),
-        "Spinach": (2.9, 3.6, 0.4, 2.2, 23),
-        "Banana": (1.1, 22.8, 0.3, 2.6, 89),
-        "Protein Powder": (80.0, 8.0, 5.0, 0.0, 400),
-        "Quinoa": (14.1, 64.2, 6.1, 7.0, 368),
-        "Vegetable Broth": (0.4, 1.0, 0.1, 0.0, 6),
-        "Sweet Potato": (1.6, 20.1, 0.1, 3.0, 86),
-        "Olive Oil": (0.0, 0.0, 100.0, 0.0, 884),
-        "Salt": (0.0, 0.0, 0.0, 0.0, 0),
-        "Tahini": (17.0, 21.2, 53.8, 9.2, 595),
-        "Lemon Juice": (0.4, 3.2, 0.0, 0.1, 12),
-        "Garlic": (6.4, 33.1, 0.5, 2.1, 149),
-        "Chicken Breast": (31.0, 0.0, 3.6, 0.0, 165),
-        "Chickpeas": (7.0, 27.4, 2.6, 7.6, 164),
-    }
-)
+NUTRITION: dict[str, tuple[float, float, float, float, float]] = {
+    "Rolled Oats": (13.5, 66.3, 6.5, 10.6, 389),
+    "Greek Yogurt": (10.0, 3.6, 0.7, 0.0, 59),
+    "Honey": (0.3, 82.4, 0.0, 0.0, 304),
+    "Chia Seeds": (16.5, 42.1, 30.7, 34.4, 486),
+    "Almond Milk": (0.4, 0.3, 1.5, 0.0, 17),
+    "Spinach": (2.9, 3.6, 0.4, 2.2, 23),
+    "Banana": (1.1, 22.8, 0.3, 2.6, 89),
+    "Protein Powder": (80.0, 8.0, 5.0, 0.0, 400),
+    "Quinoa": (14.1, 64.2, 6.1, 7.0, 368),
+    "Vegetable Broth": (0.4, 1.0, 0.1, 0.0, 6),
+    "Sweet Potato": (1.6, 20.1, 0.1, 3.0, 86),
+    "Olive Oil": (0.0, 0.0, 100.0, 0.0, 884),
+    "Salt": (0.0, 0.0, 0.0, 0.0, 0),
+    "Tahini": (17.0, 21.2, 53.8, 9.2, 595),
+    "Lemon Juice": (0.4, 3.2, 0.0, 0.1, 12),
+    "Garlic": (6.4, 33.1, 0.5, 2.1, 149),
+    "Chicken Breast": (31.0, 0.0, 3.6, 0.0, 165),
+    "Chickpeas": (7.0, 27.4, 2.6, 7.6, 164),
+}
 
 
-def _nutrition_lookup(name: str) -> "NutritionInfo | None":
-    """Callback for calculate_recipe_macros — inline lookup table."""
+def _nutrition_lookup(name: str):
+    """Callback for calculate_recipe_macros — inline nutrition lookup."""
     from wright import NutritionInfo
 
     data = NUTRITION.get(name)

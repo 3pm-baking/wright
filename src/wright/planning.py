@@ -515,9 +515,7 @@ def _cost_one_item(
                 missing_price=True,
             )
 
-        cost = calculate_ingredient_cost(
-            material, selected, density_data=density_data
-        )
+        cost = calculate_ingredient_cost(material, selected, density_data=density_data)
 
         price_per_unit, display_unit = price_display_fn(supply_item, selected)
 

@@ -27,15 +27,21 @@ from wright import Recipe, Ingredient, RecipeComponent
 
 cake = Recipe(
     name="Lemon Cake",
-    components=[RecipeComponent(name="Batter", ingredients=[
-        Ingredient(name="Flour", quantity=300, unit="g"),
-        Ingredient(name="Butter", quantity=200, unit="g"),
-    ])],
-    prep_time=30, cook_time=45,
+    components=[
+        RecipeComponent(
+            name="Batter",
+            ingredients=[
+                Ingredient(name="Flour", quantity=300, unit="g"),
+                Ingredient(name="Butter", quantity=200, unit="g"),
+            ],
+        )
+    ],
+    prep_time=30,
+    cook_time=45,
     servings=12,
 )
 
-double = cake * 2   # scale a recipe with *
+double = cake * 2  # scale a recipe with *
 ```
 
 ## Beyond food — Material and Component
@@ -47,13 +53,27 @@ double = cake * 2   # scale a recipe with *
 from wright import Material, Component
 
 # Construction: a deck's bill of materials
-framing = Component(name="Deck Framing", materials=[
-    Material(name="2x6 Pressure-Treated", quantity=24, unit="ft", require_tags=["#2"]),
-    Material(name="3\" Deck Screws", quantity=200, unit="each"),
-])
-footings = Component(name="Footings", materials=[
-    Material(name="Concrete Mix", quantity=6, unit="bag", equivalent_quantity=60, equivalent_unit="lb"),
-])
+framing = Component(
+    name="Deck Framing",
+    materials=[
+        Material(
+            name="2x6 Pressure-Treated", quantity=24, unit="ft", require_tags=["#2"]
+        ),
+        Material(name='3" Deck Screws', quantity=200, unit="each"),
+    ],
+)
+footings = Component(
+    name="Footings",
+    materials=[
+        Material(
+            name="Concrete Mix",
+            quantity=6,
+            unit="bag",
+            equivalent_quantity=60,
+            equivalent_unit="lb",
+        ),
+    ],
+)
 ```
 
 Same `scale()`, `__mul__`, and supply list pipeline works across all domains.

@@ -726,12 +726,8 @@ class TestCostIngredients:
             Ingredient(name="Flour", quantity=500, unit="g"),
         ]
         purchases = [
-            Purchase(
-                name="Toothpicks", quantity=5, unit="box", price=Decimal("10.00")
-            ),
-            Purchase(
-                name="Flour", quantity=1000, unit="g", price=Decimal("3.00")
-            ),
+            Purchase(name="Toothpicks", quantity=5, unit="box", price=Decimal("10.00")),
+            Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.00")),
         ]
         from wright.planning import calculate_item_costs
 

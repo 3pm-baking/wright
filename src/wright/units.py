@@ -8,9 +8,14 @@ import pint
 
 # ── Unit classification sets (reusable across the package) ──────────────────
 
-DISCRETE_UNITS: frozenset[str] = frozenset(
-    {"each", "packet", "packets", "ea", "piece", "pieces"}
-)
+DISCRETE_UNITS: frozenset[str] = frozenset({
+    "each",
+    "packet",
+    "packets",
+    "ea",
+    "piece",
+    "pieces",
+})
 """Units that represent countable items, not measurable quantities."""
 
 PINCH_UNITS: frozenset[str] = frozenset({"pinch", "pinches"})

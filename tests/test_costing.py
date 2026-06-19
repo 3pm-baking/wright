@@ -46,16 +46,10 @@ def density_data():
 @pytest.fixture
 def simple_purchases():
     return [
-        Purchase(
-            name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")
-        ),
-        Purchase(
-            name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.49")
-        ),
+        Purchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
+        Purchase(name="Greek Yogurt", quantity=500, unit="g", price=Decimal("4.49")),
         Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99")),
-        Purchase(
-            name="Chia Seeds", quantity=200, unit="g", price=Decimal("4.99")
-        ),
+        Purchase(name="Chia Seeds", quantity=200, unit="g", price=Decimal("4.99")),
         Purchase(name="Salt", quantity=500, unit="g", price=Decimal("2.99")),
         Purchase(name="Cinnamon", quantity=100, unit="g", price=Decimal("3.99")),
         Purchase(name="Flour", quantity=1000, unit="g", price=Decimal("3.99")),
@@ -114,9 +108,7 @@ class TestCalculateIngredientCost:
 
     def test_density_based_conversion(self, simple_purchases, density_data):
         ing = Ingredient(name="Honey", quantity=1, unit="tbsp")
-        groc = Purchase(
-            name="Honey", quantity=340, unit="g", price=Decimal("5.99")
-        )
+        groc = Purchase(name="Honey", quantity=340, unit="g", price=Decimal("5.99"))
         cost = calculate_ingredient_cost(ing, groc, density_data=density_data)
         # 1 tbsp ≈ 21g, price per g = 5.99/340, cost = 21 * 5.99/340
         expected = Decimal("21") * Decimal("5.99") / Decimal("340")
@@ -131,25 +123,19 @@ class TestCalculateIngredientCost:
 
     def test_unit_conversion_raises(self):
         ing = Ingredient(name="Mystery", quantity=100, unit="g")
-        groc = Purchase(
-            name="Mystery", quantity=1, unit="each", price=Decimal("5.00")
-        )
+        groc = Purchase(name="Mystery", quantity=1, unit="each", price=Decimal("5.00"))
         with pytest.raises(UnitConversionError):
             calculate_ingredient_cost(ing, groc)
 
     def test_pinch_estimation(self):
         ing = Ingredient(name="Salt", quantity=2, unit="pinch")
-        groc = Purchase(
-            name="Salt", quantity=500, unit="g", price=Decimal("2.99")
-        )
+        groc = Purchase(name="Salt", quantity=500, unit="g", price=Decimal("2.99"))
         cost = calculate_ingredient_cost(ing, groc)
         assert cost > Decimal("0")
 
     def test_pinch_non_convertible(self):
         ing = Ingredient(name="Salt", quantity=1, unit="pinch")
-        groc = Purchase(
-            name="Salt", quantity=1, unit="each", price=Decimal("2.99")
-        )
+        groc = Purchase(name="Salt", quantity=1, unit="each", price=Decimal("2.99"))
         cost = calculate_ingredient_cost(ing, groc)
         assert cost == Decimal("0.01")
 
@@ -164,9 +150,7 @@ class TestCalculateIngredientCost:
             equivalent_quantity=37,
             equivalent_unit="g",
         )
-        groc = Purchase(
-            name="Pudding", quantity=1000, unit="g", price=Decimal("3.00")
-        )
+        groc = Purchase(name="Pudding", quantity=1000, unit="g", price=Decimal("3.00"))
         cost = calculate_ingredient_cost(ing, groc)
         # 37g / 1000g * $3.00 = $0.111
         assert cost == Decimal("0.111")
@@ -555,9 +539,7 @@ class TestCustomMatcherCosting:
                 RecipeComponent(
                     name="Base",
                     ingredients=[
-                        Ingredient(
-                            name="Organic Rolled Oats", quantity=50, unit="g"
-                        ),
+                        Ingredient(name="Organic Rolled Oats", quantity=50, unit="g"),
                     ],
                 )
             ],

@@ -103,8 +103,7 @@ class Material(BaseModel):
     equivalent_quantity: float | None = Field(
         default=None,
         description=(
-            "Equivalent quantity in base units "
-            "(e.g., 500 for '1 box = 500 each')"
+            "Equivalent quantity in base units (e.g., 500 for '1 box = 500 each')"
         ),
     )
     equivalent_unit: str | None = Field(
@@ -354,12 +353,16 @@ class Recipe(Assembly):
                 ingredients.extend(comp.ingredients)
             else:
                 ingredients.extend(
-                    Ingredient(name=m.name, quantity=m.quantity, unit=m.unit,
-                               require_tags=m.require_tags,
-                               equivalent_quantity=m.equivalent_quantity,
-                               equivalent_unit=m.equivalent_unit,
-                               byproduct=m.byproduct,
-                               product_ref=m.product_ref)
+                    Ingredient(
+                        name=m.name,
+                        quantity=m.quantity,
+                        unit=m.unit,
+                        require_tags=m.require_tags,
+                        equivalent_quantity=m.equivalent_quantity,
+                        equivalent_unit=m.equivalent_unit,
+                        byproduct=m.byproduct,
+                        product_ref=m.product_ref,
+                    )
                     for m in comp.materials
                 )
         return ingredients
@@ -466,7 +469,7 @@ class MacroPerServing(BaseModel):
     fiber_g: float = Field(..., description="Dietary fiber in grams")
     kcal: float = Field(..., description="Energy in kilocalories")
 
-    def __add__(self, other: "MacroPerServing") -> "MacroPerServing":
+    def __add__(self, other: MacroPerServing) -> MacroPerServing:
         if not isinstance(other, MacroPerServing):
             return NotImplemented
         return MacroPerServing(
@@ -477,7 +480,7 @@ class MacroPerServing(BaseModel):
             kcal=self.kcal + other.kcal,
         )
 
-    def __mul__(self, factor: float) -> "MacroPerServing":
+    def __mul__(self, factor: float) -> MacroPerServing:
         if not isinstance(factor, int | float):
             return NotImplemented
         return MacroPerServing(
@@ -490,7 +493,7 @@ class MacroPerServing(BaseModel):
 
     __rmul__ = __mul__
 
-    def __truediv__(self, divisor: float) -> "MacroPerServing":
+    def __truediv__(self, divisor: float) -> MacroPerServing:
         if not isinstance(divisor, int | float):
             return NotImplemented
         return MacroPerServing(
@@ -502,8 +505,11 @@ class MacroPerServing(BaseModel):
         )
 
     @classmethod
-    def zero(cls) -> "MacroPerServing":
-        """Return a zero-valued instance for ``sum(..., start=MacroPerServing.zero())``."""
+    def zero(cls) -> MacroPerServing:
+        """Return a zero-valued instance.
+
+        For use with ``sum(..., start=MacroPerServing.zero())``.
+        """
         return cls(protein_g=0, carbs_g=0, fat_g=0, fiber_g=0, kcal=0)
 
 
@@ -528,7 +534,7 @@ class RecipeMacros(BaseModel):
             return None
         return self.total / self.servings_used
 
-    def __mul__(self, factor: float) -> "RecipeMacros":
+    def __mul__(self, factor: float) -> RecipeMacros:
         if not isinstance(factor, int | float):
             return NotImplemented
         return RecipeMacros(
