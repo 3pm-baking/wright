@@ -483,10 +483,12 @@ for c in sorted(all_costs, key=lambda x: x.total_cost or Decimal("0"), reverse=T
 # ── Supply tracking: deduct from stock ─────────────────────────────────────
 
 # Current shop inventory
-shop_stock = Stock([
-    SupplyItem(name='3" Deck Screws', quantity=500, unit="each"),
-    SupplyItem(name="Joist Hangers", quantity=20, unit="each"),
-])
+shop_stock = Stock(
+    [
+        SupplyItem(name='3" Deck Screws', quantity=500, unit="each"),
+        SupplyItem(name="Joist Hangers", quantity=20, unit="each"),
+    ]
+)
 
 # Deduct framing materials — get reduced stock and what's still needed
 shop_stock, remaining = shop_stock.use(framing.materials)
