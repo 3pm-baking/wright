@@ -35,14 +35,16 @@ import pint
 
 # ── Unit classification sets (reusable across the package) ──────────────────
 
-DISCRETE_UNITS: frozenset[str] = frozenset({
-    "each",
-    "packet",
-    "packets",
-    "ea",
-    "piece",
-    "pieces",
-})
+DISCRETE_UNITS: frozenset[str] = frozenset(
+    {
+        "each",
+        "packet",
+        "packets",
+        "ea",
+        "piece",
+        "pieces",
+    }
+)
 """Units that represent countable items, not measurable quantities."""
 
 PINCH_UNITS: frozenset[str] = frozenset({"pinch", "pinches"})
@@ -110,7 +112,10 @@ ureg = _ureg  # public alias for backward compat
 
 
 def parse_quantity(
-    value: float, unit: str, *, ureg: pint.UnitRegistry | None = None
+    value: float,
+    unit: str,
+    *,
+    ureg: pint.UnitRegistry | None = None,
 ) -> Any:
     """Parse a value and unit string into a pint Quantity.
 
@@ -125,27 +130,11 @@ def parse_quantity(
     return (ureg or _ureg).Quantity(value, unit)
 
 
-def convert_quantity(
-    qty: Any, to_unit: str, *, ureg: pint.UnitRegistry | None = None
-) -> Any:
-    """Convert a quantity to a different unit.
-
-    Args:
-        qty: The quantity to convert.
-        to_unit: The target unit string.
-        ureg: Optional unit registry.  Defaults to the module-level registry.
-
-    Returns:
-        The converted quantity.
-
-    Raises:
-        pint.DimensionalityError: If units are incompatible.
-    """
-    return qty.to(to_unit)
-
-
 def are_compatible(
-    unit_a: str, unit_b: str, *, ureg: pint.UnitRegistry | None = None
+    unit_a: str,
+    unit_b: str,
+    *,
+    ureg: pint.UnitRegistry | None = None,
 ) -> bool:
     """Check whether two units are dimensionally compatible.
 

@@ -23,6 +23,7 @@ from wright.matching import (
 )
 from wright.models import (
     Assembly,
+    DensityData,
     Ingredient,
     Material,
     PurchasedItem,
@@ -476,7 +477,7 @@ def _cost_one_item(
     material: Material,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict,
+    density_data: DensityData,
     matcher: ItemMatcher,
     picker: ItemPicker | None,
     price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]],
@@ -540,7 +541,7 @@ def calculate_shopping_list_cost(
     shopping_list: ShoppingList,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict | None = None,
+    density_data: DensityData | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
     price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]]
@@ -596,7 +597,7 @@ def calculate_item_costs(
     items: Sequence[Material],
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict | None = None,
+    density_data: DensityData | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
 ) -> list[ShoppingItemWithCost]:
@@ -679,7 +680,7 @@ def analyze_menu(
     assemblies: Iterable[Assembly],
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict | None = None,
+    density_data: DensityData | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
     date: DateType | None = None,

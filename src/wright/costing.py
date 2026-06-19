@@ -14,6 +14,7 @@ from wright.errors import (
 )
 from wright.matching import ItemMatcher, find_matching_purchases
 from wright.models import (
+    DensityData,
     Ingredient,
     IngredientCost,
     Material,
@@ -46,7 +47,7 @@ def convert_with_density(
     quantity: float,
     from_unit: str,
     to_unit: str,
-    density_data: dict,
+    density_data: DensityData,
 ) -> float | None:
     """Try to convert quantity using density data.
 
@@ -175,8 +176,10 @@ def calculate_ingredient_cost(
     material: Material,
     purchase: PurchasedItem,
     *,
-    density_data: dict | None = None,
-    converter: Callable[[Material, PurchasedItem, dict], Decimal | None] | None = None,
+    density_data: DensityData | None = None,
+    converter: Callable[
+        [Material, PurchasedItem, DensityData], Decimal | None
+    ] | None = None,
     ureg: pint.UnitRegistry | None = None,
 ) -> Decimal:
     """Calculate the cost of a BOM item based on a purchase item's price.
@@ -288,7 +291,7 @@ def calculate_ingredient_cost_range(
     material: Material,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict | None = None,
+    density_data: DensityData | None = None,
 ) -> IngredientCost:
     """Calculate the cost range for a material across multiple purchase sources.
 
@@ -400,7 +403,7 @@ def convert_ingredient_to_grams(
 def _cost_recipe_inner(
     recipe: Recipe,
     purchases: Iterable[PurchasedItem],
-    density_data: dict,
+    density_data: DensityData,
     recipe_index: Mapping[str, Recipe],
     visited: frozenset[str],
     *,
@@ -506,7 +509,7 @@ def calculate_recipe_cost(
     recipe: Recipe,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: dict | None = None,
+    density_data: DensityData | None = None,
     recipe_index: Mapping[str, Recipe] | None = None,
     matcher: ItemMatcher | None = None,
 ) -> RecipeCost:

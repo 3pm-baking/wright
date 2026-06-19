@@ -58,6 +58,7 @@ from wright.models import (
     BaseRecipe,
     CategoryRule,
     Component,
+    DensityData,
     FoodRecord,
     Ingredient,
     IngredientCost,
@@ -73,6 +74,7 @@ from wright.models import (
     RecipeMacros,
     ServingRange,
     Servings,
+    VolumeWeightConversions,
     categorize_ingredient,
     categorize_item,
 )
@@ -111,7 +113,6 @@ from wright.units import (
     VOLUME_UNITS,
     WEIGHT_UNITS,
     are_compatible,
-    convert_quantity,
     parse_quantity,
     ureg,
 )
@@ -136,6 +137,8 @@ __all__ = [
     "Purchase",
     "BaseIngredient",
     "BaseRecipe",
+    "DensityData",
+    "VolumeWeightConversions",
     "categorize_ingredient",
     "categorize_item",
     # Errors
@@ -151,7 +154,6 @@ __all__ = [
     "VOLUME_UNITS",
     "WEIGHT_UNITS",
     "are_compatible",
-    "convert_quantity",
     "parse_quantity",
     "ureg",
     # Matching
