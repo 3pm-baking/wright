@@ -98,7 +98,7 @@ session = ProductionRun(
     target_dates=[date(2026, 6, 20)],
 )
 
-shopping = generate_shopping_list(session, {"Overnight Oats": recipe})
+shopping = generate_shopping_list(session, [recipe])
 # → ShoppingList(.date, .production_summary, .groups, .all_items)
 # .all_items → list[SupplyItem] each with .name, .quantity, .unit, .tags
 ```
@@ -123,7 +123,7 @@ from wright import analyze_menu
 
 menu = analyze_menu(
     [ProductionItem(recipe="Overnight Oats", quantity=3)],
-    {"Overnight Oats": recipe},
+    [recipe],
     purchases,
 )
 # → MenuAnalysis(.total_cost, .items, .top_drivers, .missing_ingredients)
@@ -263,7 +263,7 @@ from wright import (
     analyze_menu,
 )
 
-recipes = {"Overnight Oats": oats, "Green Smoothie": smooth, "Quinoa Power Bowl": bowl}
+recipes = [oats, smooth, bowl]
 groceries = [
     Purchase(name="Rolled Oats", quantity=1000, unit="g", price=Decimal("3.49")),
     # ... 15 more items
