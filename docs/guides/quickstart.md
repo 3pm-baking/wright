@@ -66,7 +66,7 @@ session = ProductionRun(
     target_dates=[date(2026, 6, 20)],
 )
 
-recipes = {"Overnight Oats": recipe}
+recipes = [recipe]
 shopping = generate_shopping_list(session, recipes)
 
 print(shopping.production_summary)

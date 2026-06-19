@@ -105,7 +105,7 @@ session = ProductionRun(
     target_dates=[date(2026, 6, 20)],
 )
 
-shopping = generate_shopping_list(session, {"Lemon Cake": cake})
+shopping = generate_shopping_list(session, [cake])
 ```
 
 [Full grocery list example](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py)
