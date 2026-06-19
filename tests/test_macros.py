@@ -578,6 +578,21 @@ class TestMacroPerServingArithmetic:
         assert total.fiber_g == 25
         assert total.kcal == 1500
 
+    def test_truediv(self):
+        a = MacroPerServing(protein_g=30, carbs_g=60, fat_g=15, fiber_g=9, kcal=600)
+        b = a / 3
+        assert b.protein_g == 10
+        assert b.carbs_g == 20
+        assert b.fat_g == 5
+        assert b.fiber_g == 3
+        assert b.kcal == 200
+
+    def test_truediv_fractional(self):
+        a = MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200)
+        b = a / 3
+        assert b.protein_g == pytest.approx(3.333, abs=0.01)
+        assert b.kcal == pytest.approx(66.667, abs=0.01)
+
 
 # ── RecipeMacros arithmetic tests ────────────────────────────────────────────
 
@@ -589,7 +604,6 @@ class TestRecipeMacrosArithmetic:
         rm = RecipeMacros(
             recipe_name="Test",
             total=MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200),
-            per_serving=MacroPerServing(protein_g=5, carbs_g=10, fat_g=2.5, fiber_g=1.5, kcal=100),
             servings_used=2,
         )
         scaled = rm * 3
@@ -598,6 +612,7 @@ class TestRecipeMacrosArithmetic:
         assert scaled.total.carbs_g == 60
         assert scaled.total.fat_g == 15
         assert scaled.total.kcal == 600
+        # per_serving is derived: 30/2=15, 600/2=300
         assert scaled.per_serving.protein_g == 15
         assert scaled.per_serving.kcal == 300
         assert scaled.servings_used == 2
@@ -608,10 +623,24 @@ class TestRecipeMacrosArithmetic:
         rm = RecipeMacros(
             recipe_name="Bulk",
             total=MacroPerServing(protein_g=50, carbs_g=100, fat_g=20, fiber_g=8, kcal=800),
-            per_serving=None,
             servings_used=None,
         )
         scaled = rm * 0.5
         assert scaled.total.protein_g == 25
         assert scaled.per_serving is None
         assert scaled.servings_used is None
+
+    def test_per_serving_derived(self):
+        """per_serving is computed from total / servings_used."""
+        from wright.models import RecipeMacros
+
+        rm = RecipeMacros(
+            recipe_name="Derived",
+            total=MacroPerServing(protein_g=30, carbs_g=90, fat_g=15, fiber_g=9, kcal=600),
+            servings_used=3,
+        )
+        assert rm.per_serving.protein_g == 10
+        assert rm.per_serving.carbs_g == 30
+        assert rm.per_serving.fat_g == 5
+        assert rm.per_serving.fiber_g == 3
+        assert rm.per_serving.kcal == 200

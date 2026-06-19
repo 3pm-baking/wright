@@ -159,20 +159,9 @@ def calculate_recipe_macros(
 
     servings_used = _pick_servings(recipe.servings)
 
-    per_serving: MacroPerServing | None = None
-    if servings_used is not None and servings_used > 0:
-        per_serving = MacroPerServing(
-            protein_g=round(total_protein / servings_used, 2),
-            carbs_g=round(total_carbs / servings_used, 2),
-            fat_g=round(total_fat / servings_used, 2),
-            fiber_g=round(total_fiber / servings_used, 2),
-            kcal=round(total_kcal / servings_used, 1),
-        )
-
     return RecipeMacros(
         recipe_name=recipe.name,
         total=total,
-        per_serving=per_serving,
         servings_used=servings_used,
     )
 
