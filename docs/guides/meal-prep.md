@@ -152,20 +152,12 @@ def plan_week(schedule, recipes):
         for name in sorted(all_qty.keys())
     }
 
-    # Daily macros
+    # Daily macros — MacroPerServing supports + and * for clean aggregation
     daily = {}
     for day, meals in schedule.items():
-        p = c = f = fib = kcal = 0.0
-        for name, qty, _slot in meals:
-            rm = recipe_macros[name]
-            p += rm.total.protein_g * qty
-            c += rm.total.carbs_g * qty
-            f += rm.total.fat_g * qty
-            fib += rm.total.fiber_g * qty
-            kcal += rm.total.kcal * qty
-        daily[day] = MacroPerServing(
-            protein_g=round(p, 1), carbs_g=round(c, 1),
-            fat_g=round(f, 1), fiber_g=round(fib, 1), kcal=round(kcal, 1),
+        daily[day] = sum(
+            (recipe_macros[name].total * qty for name, qty, _ in meals),
+            start=MacroPerServing.zero(),
         )
 
     return {
