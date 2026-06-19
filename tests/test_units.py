@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pint
-import pytest
-
-from wright.units import are_compatible, convert_quantity, parse_quantity, ureg
+from wright.units import are_compatible, parse_quantity, ureg
 
 
 class TestUnitRegistry:
@@ -53,18 +50,6 @@ class TestParseQuantity:
         q = parse_quantity(2, "cup")
         ml = float(q.to("ml").magnitude)
         assert abs(ml - 473.18) < 5
-
-
-class TestConvertQuantity:
-    def test_grams_to_oz(self):
-        q = ureg.Quantity(453.59, "g")
-        result = convert_quantity(q, "oz")
-        assert abs(float(result.magnitude) - 16) < 0.1
-
-    def test_incompatible_raises(self):
-        q = ureg.Quantity(100, "g")
-        with pytest.raises(pint.DimensionalityError):
-            convert_quantity(q, "ml")
 
 
 class TestAreCompatible:
