@@ -4,6 +4,10 @@ Data-source agnostic.  Populate models from YAML, JSON, a database, or pure Pyth
 Subclass to add domain-specific metadata (pricing, translations, etc.).
 """
 
+from importlib.metadata import version as _version
+
+__version__ = _version("wright")
+
 from wright.allergens import (
     DEFAULT_DAIRY_KEYS,
     DEFAULT_GLUTEN_KEYS,
@@ -75,7 +79,6 @@ from wright.models import (
     ServingRange,
     Servings,
     VolumeWeightConversions,
-    categorize_ingredient,
     categorize_item,
 )
 from wright.planning import (
@@ -118,6 +121,8 @@ from wright.units import (
 )
 
 __all__ = [
+    # Version
+    "__version__",
     # Models
     "Assembly",
     "Material",
@@ -139,7 +144,6 @@ __all__ = [
     "BaseRecipe",
     "DensityData",
     "VolumeWeightConversions",
-    "categorize_ingredient",
     "categorize_item",
     # Errors
     "PurchaseLoadError",
