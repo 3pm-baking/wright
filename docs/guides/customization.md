@@ -1,3 +1,8 @@
+---
+title: Customization
+description: Inject custom unit converters, dietary property callbacks, nutrition data sources, volume display normalizers, and Pint unit registries into wright.
+---
+
 # Customization
 
 Every decision point in wright is injectable. Replace the default behavior

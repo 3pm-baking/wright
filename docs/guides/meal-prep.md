@@ -1,3 +1,8 @@
+---
+title: Meal Prep
+description: A 5-day meal prep planner built on wright — define recipes, schedule your week, generate a consolidated grocery list, and compute daily macro totals.
+---
+
 # Meal Prep
 
 A 5-day work-week planner — define recipes, schedule your week, and generate

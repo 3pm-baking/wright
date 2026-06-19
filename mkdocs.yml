@@ -1,15 +1,19 @@
 site_name: wright
 site_description: Multi-domain Python library for bill-of-materials planning, recipe costing, shopping list generation, unit conversion, allergen detection, and nutrition analysis. Works for food, construction, brewing, and manufacturing.
-site_url: https://wright.germanbakingasheville.com
+site_url: http://wright.germanbakingasheville.com
 repo_url: https://github.com/3pm-baking/wright
 theme:
   name: material
+  custom_dir: overrides
   favicon: assets/favicon.png
 
 extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/3pm-baking/wright
+
+extra_templates:
+  - robots.txt
 
 plugins:
   - mkdocstrings:

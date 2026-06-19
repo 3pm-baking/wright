@@ -1,3 +1,8 @@
+---
+title: Allergens & Nutrition
+description: Detect allergens and dietary badges from recipes, calculate per-serving macronutrients, and inject custom ingredient property callbacks.
+---
+
 # Allergens & Nutrition
 
 ## Allergen detection

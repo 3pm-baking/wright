@@ -1,3 +1,8 @@
+---
+title: Beyond Food
+description: Apply wright beyond food — construction bill of materials, brewing grain bills, event planning, and manufacturing BOMs. Same pipeline, any domain.
+---
+
 # Beyond Food
 
 `wright` is built on domain-agnostic primitives: `Material`, `Component`,

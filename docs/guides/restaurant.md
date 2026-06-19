@@ -1,3 +1,8 @@
+---
+title: Food Service & Restaurants
+description: Use wright as an embedded costing engine for restaurants — recipe costing, sub-recipes, menu analysis, batch planning, stock tracking, and allergen detection.
+---
+
 # Restaurants — Using wright for Food Service
 
 `wright` is not a full restaurant management system, but it is a powerful

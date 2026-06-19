@@ -1,3 +1,8 @@
+---
+title: API Reference
+description: Complete API reference for wright — models, costing, matching, planning, pricing, allergens, nutrition, session, supply, errors, and units modules.
+---
+
 # API Reference
 
 ## `wright.models`

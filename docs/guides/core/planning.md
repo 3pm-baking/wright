@@ -1,3 +1,8 @@
+---
+title: Matching & Planning
+description: Match ingredients to purchases, generate consolidated shopping lists, enrich with costs, analyze menus, and categorize items by store aisle or kitchen station.
+---
+
 # Matching & Planning
 
 ## Matching ingredients to purchases
