@@ -1,4 +1,31 @@
-"""Pint unit registry with common unit classification sets."""
+"""Pint unit registry with common unit classification sets.
+
+Wright ships a ``pint.UnitRegistry`` with pre-defined custom units and
+exposes it as :data:`ureg`.  All helper functions accept an optional
+``ureg=`` parameter so you can inject your own registry.
+
+**Add a custom unit to wright's registry**::
+
+    >>> from wright.units import ureg, parse_quantity
+    >>> ureg.define("loaf = 1 * count")
+    >>> ureg.define("@alias loaf = loaves")
+    >>> parse_quantity(2, "loaves").magnitude
+    2.0
+
+**Inject a separate registry** (required when two registries must not share
+state)::
+
+    >>> import pint
+    >>> from wright.units import parse_quantity
+    >>> my_ureg = pint.UnitRegistry()
+    >>> my_ureg.define("each = 1 * count")
+    >>> my_ureg.define("crate = 24 * each")
+    >>> parse_quantity(3, "crate", ureg=my_ureg).to("each").magnitude
+    72.0
+
+Pre-defined units: ``each``, ``packet``, ``pinch``, ``can``, ``clove``,
+``vial`` (all ``= 1 * count``) with common aliases.
+"""
 
 from __future__ import annotations
 
