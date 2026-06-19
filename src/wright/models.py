@@ -219,13 +219,13 @@ class RecipeComponent(Component):
         return data
 
     @property
-    def ingredients(self) -> list[Ingredient]:
+    def ingredients(self) -> list[Material]:
         """Food-domain alias for :attr:`Component.materials`."""
-        return self.materials  # ty:ignore[invalid-return-type]
+        return self.materials
 
     @ingredients.setter
-    def ingredients(self, value: list[Ingredient]) -> None:
-        self.materials = value  # ty:ignore[invalid-assignment]
+    def ingredients(self, value: list[Material]) -> None:
+        self.materials = value
 
     def scale(self, factor: float) -> RecipeComponent:
         """Return a new RecipeComponent with all ingredients scaled."""
@@ -349,10 +349,8 @@ class Recipe(Assembly):
         """Flatten all ingredients across all components."""
         ingredients: list[Ingredient] = []
         for comp in self.components:
-            if isinstance(comp, RecipeComponent):
-                ingredients.extend(comp.ingredients)
-            else:
-                ingredients.extend(
+            for m in comp.materials:
+                ingredients.append(
                     Ingredient(
                         name=m.name,
                         quantity=m.quantity,
@@ -363,7 +361,6 @@ class Recipe(Assembly):
                         byproduct=m.byproduct,
                         product_ref=m.product_ref,
                     )
-                    for m in comp.materials
                 )
         return ingredients
 
@@ -705,13 +702,6 @@ def categorize_item(
     return None
 
 
-categorize_ingredient = categorize_item
-""".. deprecated::
-    Use :func:`categorize_item` instead.  This alias will be removed in a
-    future version.
-"""
-
-
 DEFAULT_CATEGORY_RULES: list[CategoryRule] = [
     CategoryRule(
         category="Pantry",
@@ -851,7 +841,7 @@ DEFAULT_CATEGORY_RULES: list[CategoryRule] = [
 ]
 """Default categorization rules based on a US grocery store layout.
 
-Pass your own list to ``categorize_ingredient()`` to match a different
+Pass your own list to ``categorize_item()`` to match a different
 store layout or language.
 """
 

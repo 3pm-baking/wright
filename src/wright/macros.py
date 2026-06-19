@@ -80,8 +80,8 @@ def _ingredient_grams(
 
 def calculate_recipe_macros(
     recipe: Recipe,
-    *,
     nutrition_registry: Iterable[FoodRecord] | NutritionRegistry | None = None,
+    *,
     ingredient_nutrition_lookup: Callable[[str], NutritionInfo | None] | None = None,
     recipe_index: Mapping[str, Recipe] | None = None,
     density_data: DensityData | None = None,

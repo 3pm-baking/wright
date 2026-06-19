@@ -600,6 +600,8 @@ def calculate_item_costs(
     density_data: DensityData | None = None,
     matcher: ItemMatcher | None = None,
     picker: ItemPicker | None = None,
+    price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]]
+    | None = None,
 ) -> list[ShoppingItemWithCost]:
     """Cost arbitrary items — food, construction materials, tools, etc.
 
@@ -613,6 +615,11 @@ def calculate_item_costs(
         density_data: Optional density data for unit conversion.
         matcher: Optional custom matching function.
         picker: Optional custom picking function.
+        price_display_fn: Optional callback
+            ``(item, purchase) -> (price_per_unit, display_unit)``
+            for customizing unit price display.  Defaults to per-100g for
+            metric weight units, per-100ml for metric volume units,
+            per-package otherwise.
 
     Returns:
         List of ``ShoppingItemWithCost``, one per input item.
@@ -624,7 +631,7 @@ def calculate_item_costs(
             density_data=density_data or {},
             matcher=matcher or find_matching_purchases,
             picker=picker,
-            price_display_fn=_default_price_display,
+            price_display_fn=price_display_fn or _default_price_display,
         )
         for item in items
     ]
