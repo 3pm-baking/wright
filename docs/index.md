@@ -1,5 +1,6 @@
 ---
 title: wright
+description: Multi-domain Python library for bill-of-materials planning, recipe costing, shopping list generation, unit conversion, allergen detection, and nutrition analysis. Works for food, construction, brewing, and manufacturing.
 ---
 
 > **wright** /rīt/ — *noun*: a maker or builder. From Old English *wyrhta* (worker), as in *shipwright*, *wheelwright*, *playwright*. Here: a wright for your recipes, assemblies, and bills of materials.

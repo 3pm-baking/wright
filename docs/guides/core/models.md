@@ -1,3 +1,8 @@
+---
+title: Models
+description: Material, Component, Ingredient, Recipe, and the domain-agnostic type system. Subclass for construction lumber, food ingredients, brewing grain bills, or manufacturing assemblies.
+---
+
 # Models
 
 The domain-agnostic base classes are `Material` and `Component`. For food,

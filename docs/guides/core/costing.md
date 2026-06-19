@@ -1,3 +1,8 @@
+---
+title: Costing & Pricing
+description: Calculate recipe costs with unit conversion, density-based volume-to-weight, margin pricing, multiplier pricing, and top cost driver analysis.
+---
+
 # Costing & Pricing
 
 ## Costing a recipe

@@ -1,3 +1,8 @@
+---
+title: Getting Started
+description: Install wright with pip and go from zero to a costed, allergen-labeled production plan in three minutes.
+---
+
 # Getting Started
 
 Three minutes to go from zero to a costed, allergen-labeled production plan.
