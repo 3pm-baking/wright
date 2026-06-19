@@ -284,61 +284,151 @@ print("All assertions passed — wright works!")
 
 # ── Project 1: Build a 10'×12' backyard deck ──────────────────────────────
 
-framing = Component(name="Deck Framing", materials=[
-    Material(name="2x6 Pressure-Treated", quantity=48, unit="ft", require_tags=["#2"]),
-    Material(name="2x6 Pressure-Treated", quantity=32, unit="ft", require_tags=["#1", "rim-joist"]),
-    Material(name="Joist Hangers", quantity=16, unit="each"),
-    Material(name="3\" Deck Screws", quantity=400, unit="each"),
-])
-decking = Component(name="Deck Surface", materials=[
-    Material(name="5/4\" Cedar Decking", quantity=160, unit="ft"),
-    Material(name="2\" Stainless Screws", quantity=600, unit="each"),
-])
-footings = Component(name="Concrete Footings", materials=[
-    Material(name="Concrete Mix", quantity=8, unit="bag",
-             equivalent_quantity=60, equivalent_unit="lb"),
-    Material(name="Post Anchor", quantity=6, unit="each"),
-])
+framing = Component(
+    name="Deck Framing",
+    materials=[
+        Material(
+            name="2x6 Pressure-Treated", quantity=48, unit="ft", require_tags=["#2"]
+        ),
+        Material(
+            name="2x6 Pressure-Treated",
+            quantity=32,
+            unit="ft",
+            require_tags=["#1", "rim-joist"],
+        ),
+        Material(name="Joist Hangers", quantity=16, unit="each"),
+        Material(name='3" Deck Screws', quantity=400, unit="each"),
+    ],
+)
+decking = Component(
+    name="Deck Surface",
+    materials=[
+        Material(name='5/4" Cedar Decking', quantity=160, unit="ft"),
+        Material(name='2" Stainless Screws', quantity=600, unit="each"),
+    ],
+)
+footings = Component(
+    name="Concrete Footings",
+    materials=[
+        Material(
+            name="Concrete Mix",
+            quantity=8,
+            unit="bag",
+            equivalent_quantity=60,
+            equivalent_unit="lb",
+        ),
+        Material(name="Post Anchor", quantity=6, unit="each"),
+    ],
+)
 
 # ── Project 2: Build a raised garden bed (8'×4'×2') ───────────────────────
 
-garden_frame = Component(name="Garden Bed Frame", materials=[
-    Material(name="2x8 Cedar", quantity=24, unit="ft", require_tags=["untreated"]),
-    Material(name="4x4 Cedar Post", quantity=8, unit="ft"),
-    Material(name="3\" Deck Screws", quantity=64, unit="each"),
-])
-garden_fill = Component(name="Garden Bed Fill", materials=[
-    Material(name="Topsoil", quantity=1, unit="cu yd"),
-    Material(name="Compost", quantity=0.5, unit="cu yd"),
-])
+garden_frame = Component(
+    name="Garden Bed Frame",
+    materials=[
+        Material(name="2x8 Cedar", quantity=24, unit="ft", require_tags=["untreated"]),
+        Material(name="4x4 Cedar Post", quantity=8, unit="ft"),
+        Material(name='3" Deck Screws', quantity=64, unit="each"),
+    ],
+)
+garden_fill = Component(
+    name="Garden Bed Fill",
+    materials=[
+        Material(name="Topsoil", quantity=1, unit="cu yd"),
+        Material(name="Compost", quantity=0.5, unit="cu yd"),
+    ],
+)
 
 # ── Pricing data from the hardware store ───────────────────────────────────
 
 hardware_prices: list = [
-    Purchase(name="2x6 Pressure-Treated", quantity=8, unit="ft",
-             price=Decimal("12.97"), store="Home Depot", tags="#2"),
-    Purchase(name="2x6 Pressure-Treated", quantity=8, unit="ft",
-             price=Decimal("14.97"), store="Home Depot", tags="rim-joist,#1"),
-    Purchase(name="5/4\" Cedar Decking", quantity=8, unit="ft",
-             price=Decimal("9.97"), store="Home Depot"),
-    Purchase(name="2x8 Cedar", quantity=8, unit="ft",
-             price=Decimal("15.47"), store="Home Depot", tags="untreated"),
-    Purchase(name="4x4 Cedar Post", quantity=8, unit="ft",
-             price=Decimal("23.97"), store="Home Depot"),
-    Purchase(name="Joist Hangers", quantity=1, unit="each",
-             price=Decimal("2.47"), store="Lowe's"),
-    Purchase(name="3\" Deck Screws", quantity=100, unit="each",
-             price=Decimal("8.97"), store="Home Depot"),
-    Purchase(name="2\" Stainless Screws", quantity=100, unit="each",
-             price=Decimal("3.49"), store="Home Depot"),
-    Purchase(name="Concrete Mix", quantity=1, unit="bag",
-             price=Decimal("4.98"), store="Lowe's"),
-    Purchase(name="Post Anchor", quantity=1, unit="each",
-             price=Decimal("7.98"), store="Lowe's"),
-    Purchase(name="Topsoil", quantity=1, unit="cu yd",
-             price=Decimal("35.00"), store="Landscape Supply"),
-    Purchase(name="Compost", quantity=1, unit="cu yd",
-             price=Decimal("28.00"), store="Landscape Supply"),
+    Purchase(
+        name="2x6 Pressure-Treated",
+        quantity=8,
+        unit="ft",
+        price=Decimal("12.97"),
+        store="Home Depot",
+        tags="#2",
+    ),
+    Purchase(
+        name="2x6 Pressure-Treated",
+        quantity=8,
+        unit="ft",
+        price=Decimal("14.97"),
+        store="Home Depot",
+        tags="rim-joist,#1",
+    ),
+    Purchase(
+        name='5/4" Cedar Decking',
+        quantity=8,
+        unit="ft",
+        price=Decimal("9.97"),
+        store="Home Depot",
+    ),
+    Purchase(
+        name="2x8 Cedar",
+        quantity=8,
+        unit="ft",
+        price=Decimal("15.47"),
+        store="Home Depot",
+        tags="untreated",
+    ),
+    Purchase(
+        name="4x4 Cedar Post",
+        quantity=8,
+        unit="ft",
+        price=Decimal("23.97"),
+        store="Home Depot",
+    ),
+    Purchase(
+        name="Joist Hangers",
+        quantity=1,
+        unit="each",
+        price=Decimal("2.47"),
+        store="Lowe's",
+    ),
+    Purchase(
+        name='3" Deck Screws',
+        quantity=100,
+        unit="each",
+        price=Decimal("8.97"),
+        store="Home Depot",
+    ),
+    Purchase(
+        name='2" Stainless Screws',
+        quantity=100,
+        unit="each",
+        price=Decimal("3.49"),
+        store="Home Depot",
+    ),
+    Purchase(
+        name="Concrete Mix",
+        quantity=1,
+        unit="bag",
+        price=Decimal("4.98"),
+        store="Lowe's",
+    ),
+    Purchase(
+        name="Post Anchor",
+        quantity=1,
+        unit="each",
+        price=Decimal("7.98"),
+        store="Lowe's",
+    ),
+    Purchase(
+        name="Topsoil",
+        quantity=1,
+        unit="cu yd",
+        price=Decimal("35.00"),
+        store="Landscape Supply",
+    ),
+    Purchase(
+        name="Compost",
+        quantity=1,
+        unit="cu yd",
+        price=Decimal("28.00"),
+        store="Landscape Supply",
+    ),
 ]
 
 # ── Cost individual materials per project ──────────────────────────────────
@@ -384,7 +474,9 @@ print(f"Combined materials total: ${grand_total}")
 
 # Show items by cost impact
 print("\nTop cost drivers:")
-for c in sorted(all_costs, key=lambda x: x.total_cost or Decimal("0"), reverse=True)[:5]:
+for c in sorted(all_costs, key=lambda x: x.total_cost or Decimal("0"), reverse=True)[
+    :5
+]:
     if c.total_cost:
         print(f"  {c.item.name}: ${c.total_cost} ({c.store})")
 
@@ -405,7 +497,10 @@ assert "2x6 Pressure-Treated" in needed_names  # not in stock at all
 
 # Now deduct remaining projects from reduced stock
 all_materials = (
-    decking.materials + garden_frame.materials + footings.materials + garden_fill.materials
+    decking.materials
+    + garden_frame.materials
+    + footings.materials
+    + garden_fill.materials
 )
 shop_stock, all_remaining = shop_stock.use(all_materials)
 needed_names = {r.name for r in all_remaining}
@@ -417,29 +512,43 @@ assert deck_screw_def is None  # stock covers the 464 needed
 # ── Construction-specific categorization ────────────────────────────────────
 
 lumberyard_rules = [
-    CategoryRule(category="Lumber", priority=0,
-                 keywords=["2x", "5/4", "4x4", "cedar", "lumber", "plywood"]),
-    CategoryRule(category="Hardware", priority=1,
-                 keywords=["screw", "nail", "bolt", "anchor", "hanger"]),
-    CategoryRule(category="Concrete & Masonry", priority=2,
-                 keywords=["concrete", "cement", "mortar"]),
-    CategoryRule(category="Landscape", priority=3,
-                 keywords=["topsoil", "compost", "mulch", "gravel"]),
+    CategoryRule(
+        category="Lumber",
+        priority=0,
+        keywords=["2x", "5/4", "4x4", "cedar", "lumber", "plywood"],
+    ),
+    CategoryRule(
+        category="Hardware",
+        priority=1,
+        keywords=["screw", "nail", "bolt", "anchor", "hanger"],
+    ),
+    CategoryRule(
+        category="Concrete & Masonry",
+        priority=2,
+        keywords=["concrete", "cement", "mortar"],
+    ),
+    CategoryRule(
+        category="Landscape",
+        priority=3,
+        keywords=["topsoil", "compost", "mulch", "gravel"],
+    ),
 ]
 
 for mat in all_project_materials[:8]:
     cat = categorize_item(mat.name, rules=lumberyard_rules)
     print(f"  {mat.name} → {cat}")
 
+
 # Subclass Material for domain-specific metadata (not in the library)
 class Lumber(Material):
     grade: str | None = None
     species: str | None = None
 
-stud = Lumber(name="2x4 Stud", quantity=12, unit="ft",
-              grade="#2", species="Douglas Fir")
+
+stud = Lumber(
+    name="2x4 Stud", quantity=12, unit="ft", grade="#2", species="Douglas Fir"
+)
 assert isinstance(stud, Material)  # still works everywhere Material is accepted
 assert stud.grade == "#2"
 
 print("\nConstruction examples passed")
-

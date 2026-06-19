@@ -166,9 +166,7 @@ grouped = group_shopping_items(
 
 # ── Enrich with costs ──────────────────────────────────────────────────
 
-costs = calculate_shopping_list_cost(
-    shopping, purchases, density_data=density_data
-)
+costs = calculate_shopping_list_cost(shopping, purchases, density_data=density_data)
 
 # ── Display ────────────────────────────────────────────────────────────
 

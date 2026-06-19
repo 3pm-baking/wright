@@ -12,16 +12,22 @@ from wright import Recipe, Ingredient, RecipeComponent, ServingRange
 
 recipe = Recipe(
     name="Overnight Oats",
-    components=[RecipeComponent(name="Base", ingredients=[
-        Ingredient(name="Rolled Oats", quantity=50, unit="g"),
-        Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
-    ])],
-    prep_time=5, cook_time=0,
+    components=[
+        RecipeComponent(
+            name="Base",
+            ingredients=[
+                Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+            ],
+        )
+    ],
+    prep_time=5,
+    cook_time=0,
     servings=ServingRange(min_servings=2, max_servings=4),
 )
 # → Recipe with .all_ingredients, .servings.midpoint, .net_weight_grams
 
-double = recipe * 2      # → Recipe (delegates to .size_up())
+double = recipe * 2  # → Recipe (delegates to .size_up())
 half = recipe * 0.5
 ```
 
@@ -49,8 +55,8 @@ drivers = get_top_cost_drivers(cost, n=3)
 from decimal import Decimal
 from wright import margin_price, multiplier_price
 
-margin_price(Decimal("2.00"), 0.67)     # → 6.06
-multiplier_price(Decimal("2.00"), 3)    # → 6.00
+margin_price(Decimal("2.00"), 0.67)  # → 6.06
+multiplier_price(Decimal("2.00"), 3)  # → 6.00
 ```
 
 ## Nutrition
@@ -152,9 +158,12 @@ Available pickers: `pinned_picker`, `cheapest_picker`, `recent_picker`,
 ```python
 from wright import categorize_item, CategoryRule
 
-categorize_item("Flour", rules=[
-    CategoryRule(category="Aisle 1", priority=0, keywords=["flour", "sugar"]),
-])
+categorize_item(
+    "Flour",
+    rules=[
+        CategoryRule(category="Aisle 1", priority=0, keywords=["flour", "sugar"]),
+    ],
+)
 # → str | None — category name, or None if no rules match
 ```
 
@@ -166,14 +175,27 @@ categorize_item("Flour", rules=[
 from wright import Material, Component, ProductionItem, generate_shopping_list
 
 # Define a deck as components with materials
-framing = Component(name="Deck Framing", materials=[
-    Material(name="2x6 Pressure-Treated", quantity=24, unit="ft", require_tags=["#2"]),
-    Material(name="3\" Deck Screws", quantity=200, unit="each"),
-])
-footings = Component(name="Footings", materials=[
-    Material(name="Concrete Mix", quantity=6, unit="bag",
-             equivalent_quantity=60, equivalent_unit="lb"),
-])
+framing = Component(
+    name="Deck Framing",
+    materials=[
+        Material(
+            name="2x6 Pressure-Treated", quantity=24, unit="ft", require_tags=["#2"]
+        ),
+        Material(name='3" Deck Screws', quantity=200, unit="each"),
+    ],
+)
+footings = Component(
+    name="Footings",
+    materials=[
+        Material(
+            name="Concrete Mix",
+            quantity=6,
+            unit="bag",
+            equivalent_quantity=60,
+            equivalent_unit="lb",
+        ),
+    ],
+)
 
 # Scale for a bigger deck
 big_framing = framing * 1.5
@@ -183,12 +205,15 @@ big_framing = framing * 1.5
 from wright import CategoryRule, categorize_item
 
 lumberyard_rules = [
-    CategoryRule(category="Lumber", priority=0,
-                 keywords=["lumber", "plywood", "2x", "stud"]),
-    CategoryRule(category="Hardware", priority=1,
-                 keywords=["screw", "nail", "bolt", "anchor"]),
-    CategoryRule(category="Concrete", priority=2,
-                 keywords=["concrete", "cement", "mortar"]),
+    CategoryRule(
+        category="Lumber", priority=0, keywords=["lumber", "plywood", "2x", "stud"]
+    ),
+    CategoryRule(
+        category="Hardware", priority=1, keywords=["screw", "nail", "bolt", "anchor"]
+    ),
+    CategoryRule(
+        category="Concrete", priority=2, keywords=["concrete", "cement", "mortar"]
+    ),
 ]
 
 cat = categorize_item("2x6 Pressure-Treated", rules=lumberyard_rules)
@@ -200,13 +225,21 @@ cat = categorize_item("2x6 Pressure-Treated", rules=lumberyard_rules)
 ```python
 from wright import Material
 
+
 class Lumber(Material):
     grade: str | None = None
     waste_factor: float = 0.10  # 10% extra for offcuts
     species: str | None = None
 
-stud = Lumber(name="2x4 Stud", quantity=12, unit="ft",
-              grade="#2", species="Douglas Fir", waste_factor=0.05)
+
+stud = Lumber(
+    name="2x4 Stud",
+    quantity=12,
+    unit="ft",
+    grade="#2",
+    species="Douglas Fir",
+    waste_factor=0.05,
+)
 ```
 
 See the [Domains guide](domains.md) for full construction, brewing, and
@@ -222,9 +255,12 @@ by store aisle, and enriches each line with costs.
 from datetime import date
 from wright import (
     DEFAULT_CATEGORY_RULES,
-    ProductionRun, ProductionItem,
-    generate_shopping_list, group_shopping_items,
-    calculate_shopping_list_cost, analyze_menu,
+    ProductionRun,
+    ProductionItem,
+    generate_shopping_list,
+    group_shopping_items,
+    calculate_shopping_list_cost,
+    analyze_menu,
 )
 
 recipes = {"Overnight Oats": oats, "Green Smoothie": smooth, "Quinoa Power Bowl": bowl}
@@ -244,7 +280,9 @@ session = ProductionRun(
 )
 
 shopping = generate_shopping_list(session, recipes)
-grouped = group_shopping_items(shopping.all_items, category_rules=DEFAULT_CATEGORY_RULES)
+grouped = group_shopping_items(
+    shopping.all_items, category_rules=DEFAULT_CATEGORY_RULES
+)
 costs = calculate_shopping_list_cost(shopping, groceries, density_data=density_data)
 ```
 

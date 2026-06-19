@@ -60,14 +60,19 @@ class TestRecipeNameToFilename:
         assert convert_recipe_name_to_filename("Cake") == "cake"
 
     def test_spaces_to_hyphens(self):
-        assert convert_recipe_name_to_filename("German Cheese Cake") == "german-cheese-cake"
+        assert (
+            convert_recipe_name_to_filename("German Cheese Cake")
+            == "german-cheese-cake"
+        )
 
     def test_special_chars_removed(self):
         result = convert_recipe_name_to_filename("Oma Christa's Spiced Cake")
         assert result == "oma-christas-spiced-cake"
 
     def test_multiple_spaces(self):
-        assert convert_recipe_name_to_filename("Double  Chocolate") == "double-chocolate"
+        assert (
+            convert_recipe_name_to_filename("Double  Chocolate") == "double-chocolate"
+        )
 
     def test_leading_trailing_hyphens(self):
         assert convert_recipe_name_to_filename(" - Cake - ") == "cake"

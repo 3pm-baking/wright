@@ -11,11 +11,14 @@ from wright import Recipe, Ingredient, RecipeComponent, ServingRange
 recipe = Recipe(
     name="Overnight Oats",
     components=[
-        RecipeComponent(name="Base", ingredients=[
-            Ingredient(name="Rolled Oats", quantity=50, unit="g"),
-            Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
-            Ingredient(name="Honey", quantity=1, unit="tbsp"),
-        ])
+        RecipeComponent(
+            name="Base",
+            ingredients=[
+                Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+                Ingredient(name="Honey", quantity=1, unit="tbsp"),
+            ],
+        )
     ],
     prep_time=5,
     cook_time=0,

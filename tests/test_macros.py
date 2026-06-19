@@ -603,7 +603,9 @@ class TestRecipeMacrosArithmetic:
 
         rm = RecipeMacros(
             recipe_name="Test",
-            total=MacroPerServing(protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200),
+            total=MacroPerServing(
+                protein_g=10, carbs_g=20, fat_g=5, fiber_g=3, kcal=200
+            ),
             servings_used=2,
         )
         scaled = rm * 3
@@ -622,7 +624,9 @@ class TestRecipeMacrosArithmetic:
 
         rm = RecipeMacros(
             recipe_name="Bulk",
-            total=MacroPerServing(protein_g=50, carbs_g=100, fat_g=20, fiber_g=8, kcal=800),
+            total=MacroPerServing(
+                protein_g=50, carbs_g=100, fat_g=20, fiber_g=8, kcal=800
+            ),
             servings_used=None,
         )
         scaled = rm * 0.5
@@ -636,7 +640,9 @@ class TestRecipeMacrosArithmetic:
 
         rm = RecipeMacros(
             recipe_name="Derived",
-            total=MacroPerServing(protein_g=30, carbs_g=90, fat_g=15, fiber_g=9, kcal=600),
+            total=MacroPerServing(
+                protein_g=30, carbs_g=90, fat_g=15, fiber_g=9, kcal=600
+            ),
             servings_used=3,
         )
         assert rm.per_serving.protein_g == 10

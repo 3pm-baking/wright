@@ -55,6 +55,9 @@ build-backend = "uv_build"
 [tool.uv]
 package = true
 
+[tool.ruff]
+extend-include = ["*.md"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "D", "UP", "B", "C4", "SIM"]
 ignore = ["D105", "D107", "D203", "D212", "D417"]

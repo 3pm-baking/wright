@@ -34,17 +34,23 @@ from wright import Recipe, Ingredient, RecipeComponent
 
 cake = Recipe(
     name="Lemon Cake",
-    components=[RecipeComponent(name="Batter", ingredients=[
-        Ingredient(name="Flour", quantity=300, unit="g"),
-        Ingredient(name="Butter", quantity=200, unit="g"),
-        Ingredient(name="Lemon Juice", quantity=3, unit="tbsp"),
-    ])],
-    prep_time=30, cook_time=45,
+    components=[
+        RecipeComponent(
+            name="Batter",
+            ingredients=[
+                Ingredient(name="Flour", quantity=300, unit="g"),
+                Ingredient(name="Butter", quantity=200, unit="g"),
+                Ingredient(name="Lemon Juice", quantity=3, unit="tbsp"),
+            ],
+        )
+    ],
+    prep_time=30,
+    cook_time=45,
     servings=12,
 )
 
 # Scale it
-double_batch = cake * 2        # same as cake.size_up(2)
+double_batch = cake * 2  # same as cake.size_up(2)
 half_batch = cake * 0.5
 ```
 
@@ -61,8 +67,8 @@ groceries = [
 ]
 
 cost = calculate_recipe_cost(cake, groceries)
-print(cost.total_cost_range.midpoint)         # → 3.10
-print(cost.cost_per_serving_range.midpoint)   # → 0.26
+print(cost.total_cost_range.midpoint)  # → 3.10
+print(cost.cost_per_serving_range.midpoint)  # → 0.26
 ```
 
 ## Planning a production run
@@ -70,9 +76,12 @@ print(cost.cost_per_serving_range.midpoint)   # → 0.26
 ```python
 from datetime import date
 from wright import (
-    ProductionRun, ProductionItem,
-    generate_shopping_list, group_shopping_items,
-    calculate_shopping_list_cost, analyze_menu,
+    ProductionRun,
+    ProductionItem,
+    generate_shopping_list,
+    group_shopping_items,
+    calculate_shopping_list_cost,
+    analyze_menu,
     DEFAULT_CATEGORY_RULES,
 )
 
@@ -115,7 +124,8 @@ total = sum(c.total_cost for c in costs if c.total_cost is not None)
 
 menu = analyze_menu(
     [ProductionItem(assembly="Lemon Cake", quantity=3)],
-    [cake], groceries,
+    [cake],
+    groceries,
 )
 for item in menu.top_drivers:
     print(f"  {item.item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
@@ -141,9 +151,12 @@ badges = detect_dietary_properties(cake)
 Supplement keyword detection with purchase data:
 
 ```python
-badges = detect_dietary_properties(cake, ingredient_properties=lambda ing: (
-    frozenset({"vegan", "gluten-free"}) if "gf" in ing.require_tags else frozenset()
-))
+badges = detect_dietary_properties(
+    cake,
+    ingredient_properties=lambda ing: (
+        frozenset({"vegan", "gluten-free"}) if "gf" in ing.require_tags else frozenset()
+    ),
+)
 ```
 
 ## Nutrition
@@ -152,8 +165,14 @@ badges = detect_dietary_properties(cake, ingredient_properties=lambda ing: (
 from wright import calculate_recipe_macros, NutritionInfo, FoodRecord
 
 registry = [
-    FoodRecord(ingredient="Flour", nutrition=NutritionInfo(protein_g=10, carbs_g=76, fat_g=1, kcal=364)),
-    FoodRecord(ingredient="Butter", nutrition=NutritionInfo(protein_g=0.9, carbs_g=0.1, fat_g=81, kcal=717)),
+    FoodRecord(
+        ingredient="Flour",
+        nutrition=NutritionInfo(protein_g=10, carbs_g=76, fat_g=1, kcal=364),
+    ),
+    FoodRecord(
+        ingredient="Butter",
+        nutrition=NutritionInfo(protein_g=0.9, carbs_g=0.1, fat_g=81, kcal=717),
+    ),
 ]
 
 macros = calculate_recipe_macros(cake, nutrition_registry=registry)
@@ -175,8 +194,8 @@ stock, deficit = stock.use([SupplyItem(name="Flour", quantity=900, unit="g")])
 ```python
 from wright import margin_price, multiplier_price
 
-margin_price(Decimal("2.00"), 0.67)     # → 6.06  (67% margin)
-multiplier_price(Decimal("2.00"), 3)    # → 6.00  (3× cost)
+margin_price(Decimal("2.00"), 0.67)  # → 6.06  (67% margin)
+multiplier_price(Decimal("2.00"), 3)  # → 6.00  (3× cost)
 ```
 
 ## Everything is injectable
@@ -189,12 +208,16 @@ picker = chain(pinned_picker({"Butter": my_brand}), cheapest_picker)
 items = calculate_shopping_list_cost(shopping, groceries, picker=picker)
 
 # Custom volume display for metric users
-shopping = generate_shopping_list(session, [cake],
+shopping = generate_shopping_list(
+    session,
+    [cake],
     display_normalizer=lambda q, u: ...,
 )
 
 # Custom name matcher
-cost = calculate_recipe_cost(cake, groceries,
+cost = calculate_recipe_cost(
+    cake,
+    groceries,
     matcher=my_fuzzy_matcher,
 )
 ```
@@ -208,37 +231,67 @@ manufacturing, or any bill-of-materials domain. No dummy food fields needed:
 from datetime import date
 from decimal import Decimal
 from wright import (
-    Assembly, Component, ProductionItem, ProductionRun, Purchase,
-    generate_shopping_list, calculate_item_costs,
+    Assembly,
+    Component,
+    ProductionItem,
+    ProductionRun,
+    Purchase,
+    generate_shopping_list,
+    calculate_item_costs,
 )
 
 # ── Two home projects ──────────────────────────────────────────────────────
 
-deck = Assembly(name="Backyard Deck", components=[
-    Component(name="Framing", materials=[
-        Material(name="2x6 Pressure-Treated", quantity=48, unit="ft"),
-        Material(name="Joist Hangers", quantity=16, unit="each"),
-    ]),
-    Component(name="Surface", materials=[
-        Material(name='5/4" Cedar Decking', quantity=160, unit="ft"),
-        Material(name='2" Stainless Screws', quantity=600, unit="each"),
-    ]),
-])
+deck = Assembly(
+    name="Backyard Deck",
+    components=[
+        Component(
+            name="Framing",
+            materials=[
+                Material(name="2x6 Pressure-Treated", quantity=48, unit="ft"),
+                Material(name="Joist Hangers", quantity=16, unit="each"),
+            ],
+        ),
+        Component(
+            name="Surface",
+            materials=[
+                Material(name='5/4" Cedar Decking', quantity=160, unit="ft"),
+                Material(name='2" Stainless Screws', quantity=600, unit="each"),
+            ],
+        ),
+    ],
+)
 
-bed = Assembly(name="Raised Garden Bed", components=[
-    Component(name="Frame", materials=[
-        Material(name="2x8 Cedar", quantity=24, unit="ft"),
-        Material(name='3" Deck Screws', quantity=64, unit="each"),
-    ]),
-])
+bed = Assembly(
+    name="Raised Garden Bed",
+    components=[
+        Component(
+            name="Frame",
+            materials=[
+                Material(name="2x8 Cedar", quantity=24, unit="ft"),
+                Material(name='3" Deck Screws', quantity=64, unit="each"),
+            ],
+        ),
+    ],
+)
 
 # ── Hardware store prices ──────────────────────────────────────────────────
 
 prices = [
-    Purchase(name="2x6 Pressure-Treated", quantity=8, unit="ft",
-             price=Decimal("12.97"), store="Home Depot"),
-    Purchase(name='2" Stainless Screws', quantity=100, unit="each",
-             price=Decimal("3.49"), store="Home Depot"),
+    Purchase(
+        name="2x6 Pressure-Treated",
+        quantity=8,
+        unit="ft",
+        price=Decimal("12.97"),
+        store="Home Depot",
+    ),
+    Purchase(
+        name='2" Stainless Screws',
+        quantity=100,
+        unit="each",
+        price=Decimal("3.49"),
+        store="Home Depot",
+    ),
 ]
 
 # ── Cost one project ───────────────────────────────────────────────────────

@@ -29,14 +29,20 @@ from wright import Recipe, Ingredient, RecipeComponent, Purchase, calculate_reci
 dish = Recipe(
     name="Pan-Seared Salmon",
     components=[
-        RecipeComponent(name="Protein", ingredients=[
-            Ingredient(name="Atlantic Salmon Fillet", quantity=170, unit="g"),
-        ]),
-        RecipeComponent(name="Sides", ingredients=[
-            Ingredient(name="Baby Spinach", quantity=85, unit="g"),
-            Ingredient(name="Olive Oil", quantity=2, unit="tbsp"),
-            Ingredient(name="Lemon Juice", quantity=1, unit="tbsp"),
-        ]),
+        RecipeComponent(
+            name="Protein",
+            ingredients=[
+                Ingredient(name="Atlantic Salmon Fillet", quantity=170, unit="g"),
+            ],
+        ),
+        RecipeComponent(
+            name="Sides",
+            ingredients=[
+                Ingredient(name="Baby Spinach", quantity=85, unit="g"),
+                Ingredient(name="Olive Oil", quantity=2, unit="tbsp"),
+                Ingredient(name="Lemon Juice", quantity=1, unit="tbsp"),
+            ],
+        ),
     ],
     prep_time=10,
     cook_time=12,
@@ -45,10 +51,30 @@ dish = Recipe(
 
 # Purchase prices from your supplier catalog
 supplier_prices = [
-    Purchase(name="Atlantic Salmon Fillet", quantity=454, unit="g", price=Decimal("14.99"), store="Sysco"),
-    Purchase(name="Baby Spinach", quantity=142, unit="g", price=Decimal("3.99"), store="Sysco"),
-    Purchase(name="Olive Oil", quantity=500, unit="ml", price=Decimal("8.49"), store="Sysco"),
-    Purchase(name="Lemon Juice", quantity=250, unit="ml", price=Decimal("1.99"), store="Sysco"),
+    Purchase(
+        name="Atlantic Salmon Fillet",
+        quantity=454,
+        unit="g",
+        price=Decimal("14.99"),
+        store="Sysco",
+    ),
+    Purchase(
+        name="Baby Spinach",
+        quantity=142,
+        unit="g",
+        price=Decimal("3.99"),
+        store="Sysco",
+    ),
+    Purchase(
+        name="Olive Oil", quantity=500, unit="ml", price=Decimal("8.49"), store="Sysco"
+    ),
+    Purchase(
+        name="Lemon Juice",
+        quantity=250,
+        unit="ml",
+        price=Decimal("1.99"),
+        store="Sysco",
+    ),
 ]
 
 cost = calculate_recipe_cost(dish, supplier_prices)
@@ -66,28 +92,42 @@ handles this with recursive costing:
 # Base component — made in bulk, costed once
 chicken_stock = Recipe(
     name="Chicken Stock",
-    components=[RecipeComponent(name="Base", ingredients=[
-        Ingredient(name="Chicken Bones", quantity=2000, unit="g"),
-        Ingredient(name="Onion", quantity=300, unit="g"),
-        Ingredient(name="Carrot", quantity=200, unit="g"),
-        Ingredient(name="Celery", quantity=150, unit="g"),
-    ])],
+    components=[
+        RecipeComponent(
+            name="Base",
+            ingredients=[
+                Ingredient(name="Chicken Bones", quantity=2000, unit="g"),
+                Ingredient(name="Onion", quantity=300, unit="g"),
+                Ingredient(name="Carrot", quantity=200, unit="g"),
+                Ingredient(name="Celery", quantity=150, unit="g"),
+            ],
+        )
+    ],
     prep_time=15,
     cook_time=240,
-    servings=None,          # not portioned as a dish
+    servings=None,  # not portioned as a dish
     net_weight_grams=1500,  # yield after reduction
 )
 
 # Dishes that use the stock
 risotto = Recipe(
     name="Wild Mushroom Risotto",
-    components=[RecipeComponent(name="Risotto", ingredients=[
-        Ingredient(name="Arborio Rice", quantity=80, unit="g"),
-        Ingredient(name="Chicken Stock", quantity=200, unit="ml",
-                    product_ref="Chicken Stock"),  # recurses into stock cost
-        Ingredient(name="Wild Mushrooms", quantity=60, unit="g"),
-        Ingredient(name="Parmesan", quantity=15, unit="g"),
-    ])],
+    components=[
+        RecipeComponent(
+            name="Risotto",
+            ingredients=[
+                Ingredient(name="Arborio Rice", quantity=80, unit="g"),
+                Ingredient(
+                    name="Chicken Stock",
+                    quantity=200,
+                    unit="ml",
+                    product_ref="Chicken Stock",
+                ),  # recurses into stock cost
+                Ingredient(name="Wild Mushrooms", quantity=60, unit="g"),
+                Ingredient(name="Parmesan", quantity=15, unit="g"),
+            ],
+        )
+    ],
     prep_time=10,
     cook_time=25,
     servings=1,
@@ -177,10 +217,14 @@ Every dish should declare allergens. `wright` automates it:
 from wright import detect_allergens
 
 allergy_map = {
-    "milk": "Dairy", "cheese": "Dairy", "parmesan": "Dairy",
-    "wheat": "Gluten", "flour": "Gluten",
+    "milk": "Dairy",
+    "cheese": "Dairy",
+    "parmesan": "Dairy",
+    "wheat": "Gluten",
+    "flour": "Gluten",
     "egg": "Eggs",
-    "fish": "Fish", "salmon": "Fish",
+    "fish": "Fish",
+    "salmon": "Fish",
 }
 
 allergens = detect_allergens(dish, allergy_map)
@@ -195,13 +239,17 @@ Per-serving nutrition with your own ingredient database:
 from wright import calculate_recipe_macros, NutritionInfo
 
 nutrition_db = {
-    "Atlantic Salmon Fillet": NutritionInfo(protein_g=20.4, carbs_g=0, fat_g=13.4, kcal=208),
+    "Atlantic Salmon Fillet": NutritionInfo(
+        protein_g=20.4, carbs_g=0, fat_g=13.4, kcal=208
+    ),
     "Baby Spinach": NutritionInfo(protein_g=2.9, carbs_g=3.6, fat_g=0.4, kcal=23),
 }
 
 macros = calculate_recipe_macros(dish, nutrition_registry=nutrition_db)
-print(f"Per serving: {macros.per_serving.kcal:.0f} kcal, "
-      f"{macros.per_serving.protein_g:.0f}g protein")
+print(
+    f"Per serving: {macros.per_serving.kcal:.0f} kcal, "
+    f"{macros.per_serving.protein_g:.0f}g protein"
+)
 ```
 
 ## Stock Tracking: Walk-In to Prep Sheet
@@ -250,14 +298,26 @@ Map ingredients to your kitchen's prep stations:
 from wright import categorize_item, CategoryRule
 
 station_rules = [
-    CategoryRule(category="Butcher/Protein", priority=0,
-                 keywords=["salmon", "chicken", "beef", "pork", "fish"]),
-    CategoryRule(category="Produce Wash", priority=1,
-                 keywords=["spinach", "mushroom", "onion", "carrot", "celery", "lemon"]),
-    CategoryRule(category="Pantry/Dry Storage", priority=2,
-                 keywords=["rice", "flour", "oil", "salt", "sugar", "vinegar"]),
-    CategoryRule(category="Dairy/Cheese", priority=3,
-                 keywords=["butter", "cream", "cheese", "milk", "parmesan"]),
+    CategoryRule(
+        category="Butcher/Protein",
+        priority=0,
+        keywords=["salmon", "chicken", "beef", "pork", "fish"],
+    ),
+    CategoryRule(
+        category="Produce Wash",
+        priority=1,
+        keywords=["spinach", "mushroom", "onion", "carrot", "celery", "lemon"],
+    ),
+    CategoryRule(
+        category="Pantry/Dry Storage",
+        priority=2,
+        keywords=["rice", "flour", "oil", "salt", "sugar", "vinegar"],
+    ),
+    CategoryRule(
+        category="Dairy/Cheese",
+        priority=3,
+        keywords=["butter", "cream", "cheese", "milk", "parmesan"],
+    ),
 ]
 
 for item in shopping.all_items:

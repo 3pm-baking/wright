@@ -23,31 +23,46 @@ from wright import Recipe, Ingredient, RecipeComponent
 
 overnight_oats = Recipe(
     name="Overnight Oats",
-    components=[RecipeComponent(name="Base", ingredients=[
-        Ingredient(name="Rolled Oats", quantity=50, unit="g"),
-        Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
-        Ingredient(name="Honey", quantity=1, unit="tbsp"),
-        Ingredient(name="Chia Seeds", quantity=1, unit="tbsp"),
-        Ingredient(name="Almond Milk", quantity=120, unit="ml"),
-    ])],
-    prep_time=5, cook_time=0, servings=1,
+    components=[
+        RecipeComponent(
+            name="Base",
+            ingredients=[
+                Ingredient(name="Rolled Oats", quantity=50, unit="g"),
+                Ingredient(name="Greek Yogurt", quantity=100, unit="g"),
+                Ingredient(name="Honey", quantity=1, unit="tbsp"),
+                Ingredient(name="Chia Seeds", quantity=1, unit="tbsp"),
+                Ingredient(name="Almond Milk", quantity=120, unit="ml"),
+            ],
+        )
+    ],
+    prep_time=5,
+    cook_time=0,
+    servings=1,
 )
 
 lemon_chicken = Recipe(
     name="Grilled Lemon Chicken & Sweet Potato",
     components=[
-        RecipeComponent(name="Protein", ingredients=[
-            Ingredient(name="Chicken Breast", quantity=200, unit="g"),
-            Ingredient(name="Lemon Juice", quantity=1, unit="tbsp"),
-            Ingredient(name="Garlic", quantity=1, unit="clove"),
-            Ingredient(name="Olive Oil", quantity=1, unit="tbsp"),
-            Ingredient(name="Salt", quantity=0.5, unit="tsp"),
-        ]),
-        RecipeComponent(name="Side", ingredients=[
-            Ingredient(name="Sweet Potato", quantity=1, unit="each"),
-        ]),
+        RecipeComponent(
+            name="Protein",
+            ingredients=[
+                Ingredient(name="Chicken Breast", quantity=200, unit="g"),
+                Ingredient(name="Lemon Juice", quantity=1, unit="tbsp"),
+                Ingredient(name="Garlic", quantity=1, unit="clove"),
+                Ingredient(name="Olive Oil", quantity=1, unit="tbsp"),
+                Ingredient(name="Salt", quantity=0.5, unit="tsp"),
+            ],
+        ),
+        RecipeComponent(
+            name="Side",
+            ingredients=[
+                Ingredient(name="Sweet Potato", quantity=1, unit="each"),
+            ],
+        ),
     ],
-    prep_time=10, cook_time=25, servings=1,
+    prep_time=10,
+    cook_time=25,
+    servings=1,
 )
 
 # ... green smoothie, quinoa power bowl, chickpea bowl
@@ -103,9 +118,13 @@ No new library code.  Everything delegates to wright:
 from collections import defaultdict
 from datetime import date
 from wright import (
-    ProductionItem, ProductionRun, MacroPerServing,
-    generate_shopping_list, calculate_recipe_macros,
+    ProductionItem,
+    ProductionRun,
+    MacroPerServing,
+    generate_shopping_list,
+    calculate_recipe_macros,
 )
+
 
 def plan_week(schedule, recipes):
     sun_items, wed_items = defaultdict(float), defaultdict(float)
@@ -117,14 +136,16 @@ def plan_week(schedule, recipes):
     # Two cook sessions
     sun_run = ProductionRun(
         date=date(2026, 6, 15),
-        production=[ProductionItem(assembly=n, quantity=q)
-                    for n, q in sorted(sun_items.items())],
+        production=[
+            ProductionItem(assembly=n, quantity=q) for n, q in sorted(sun_items.items())
+        ],
         target_dates=[date(2026, 6, 15), date(2026, 6, 17)],
     )
     wed_run = ProductionRun(
         date=date(2026, 6, 17),
-        production=[ProductionItem(assembly=n, quantity=q)
-                    for n, q in sorted(wed_items.items())],
+        production=[
+            ProductionItem(assembly=n, quantity=q) for n, q in sorted(wed_items.items())
+        ],
         target_dates=[date(2026, 6, 17), date(2026, 6, 19)],
     )
 
@@ -134,11 +155,10 @@ def plan_week(schedule, recipes):
         all_qty[k] += v
     combined = ProductionRun(
         date=date(2026, 6, 15),
-        production=[ProductionItem(assembly=n, quantity=q)
-                    for n, q in sorted(all_qty.items())],
-        target_dates=[
-            date(2026, 6, d) for d in range(15, 20)
+        production=[
+            ProductionItem(assembly=n, quantity=q) for n, q in sorted(all_qty.items())
         ],
+        target_dates=[date(2026, 6, d) for d in range(15, 20)],
     )
     shopping = generate_shopping_list(combined, recipes)
 

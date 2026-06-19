@@ -159,9 +159,7 @@ class TestRecipe:
         assert r.instructions == []
 
     def test_servings_int(self):
-        r = Recipe(
-            name="Cake", components=[], prep_time=10, cook_time=30, servings=8
-        )
+        r = Recipe(name="Cake", components=[], prep_time=10, cook_time=30, servings=8)
         assert r.servings == 8
 
     def test_servings_range(self):
