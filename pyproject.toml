@@ -3,6 +3,7 @@ name = "wright"
 version = "0.1.0"
 description = "Multi-domain Python library for bill-of-materials planning, recipe costing, shopping list aggregation, unit conversion, allergen detection, and nutrition analysis. Works for food recipes, construction, brewing, and manufacturing."
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Will Dean", email = "will@germanbakingasheville.com" }
 ]
