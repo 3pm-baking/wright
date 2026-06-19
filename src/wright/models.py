@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
-from typing import Protocol
+from typing import Protocol, TypedDict
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -854,3 +854,36 @@ DEFAULT_CATEGORY_RULES: list[CategoryRule] = [
 Pass your own list to ``categorize_ingredient()`` to match a different
 store layout or language.
 """
+
+
+# ---------------------------------------------------------------------------
+# Density data types
+# ---------------------------------------------------------------------------
+
+
+class VolumeWeightConversions(TypedDict, total=False):
+    """Per-unit weight conversions for a dry ingredient.
+
+    Each key is a volume unit (``tsp``, ``tbsp``, ``cup``) and each
+    value is the weight in grams per that unit.
+    """
+
+    tsp: float
+    tbsp: float
+    cup: float
+
+
+class DensityData(TypedDict, total=False):
+    """Ingredient density data for cross-dimensional unit conversion.
+
+    Provides two conversion strategies:
+
+    - **liquids**: density in g/ml for fluids (e.g. ``"Honey": 1.44``).
+    - **volume_weights**: direct grams-per-volume-unit for dry ingredients
+      (e.g. ``"Cinnamon": {"tsp": 2.6, "tbsp": 7.8}``).
+
+    Both sections are optional — pass whichever your data provides.
+    """
+
+    liquids: dict[str, float]
+    volume_weights: dict[str, VolumeWeightConversions]
