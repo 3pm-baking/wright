@@ -18,7 +18,7 @@ Data-source agnostic. No I/O inside the core — models are plain Pydantic, the
 `PurchasedItem` protocol accepts anything. Subclass to add your own fields.
 
 ```bash
-pip install wright
+pip install wright-core
 ```
 
 ## Recipes and ingredients

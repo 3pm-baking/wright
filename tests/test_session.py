@@ -9,7 +9,7 @@ import pytest
 from wright.session import (
     ProductionItem,
     ProductionRun,
-    convert_recipe_name_to_filename,
+    convert_name_to_filename,
 )
 
 
@@ -57,28 +57,37 @@ class TestProductionRun:
 
 class TestRecipeNameToFilename:
     def test_simple(self):
-        assert convert_recipe_name_to_filename("Cake") == "cake"
+        assert convert_name_to_filename("Cake") == "cake"
 
     def test_spaces_to_hyphens(self):
         assert (
-            convert_recipe_name_to_filename("German Cheese Cake")
-            == "german-cheese-cake"
+            convert_name_to_filename("Chocolate Chip Cookie") == "chocolate-chip-cookie"
         )
 
     def test_special_chars_removed(self):
-        result = convert_recipe_name_to_filename("Oma Christa's Spiced Cake")
-        assert result == "oma-christas-spiced-cake"
+        result = convert_name_to_filename("Grandma's Apple Pie")
+        assert result == "grandmas-apple-pie"
 
     def test_multiple_spaces(self):
-        assert (
-            convert_recipe_name_to_filename("Double  Chocolate") == "double-chocolate"
-        )
+        assert convert_name_to_filename("Double  Chocolate") == "double-chocolate"
 
     def test_leading_trailing_hyphens(self):
-        assert convert_recipe_name_to_filename(" - Cake - ") == "cake"
+        assert convert_name_to_filename(" - Cake - ") == "cake"
 
-    def test_umlauts_removed(self):
-        assert convert_recipe_name_to_filename("Käsekuchen") == "ksekuchen"
+    def test_umlauts_normalized(self):
+        assert convert_name_to_filename("Käsekuchen") == "kaesekuchen"
+
+    def test_accented_characters_normalized(self):
+        assert convert_name_to_filename("Crème Brûlée") == "creme-brulee"
+        assert convert_name_to_filename("Jalapeño Queso") == "jalapeno-queso"
+
+    def test_transliterations_disabled(self):
+        assert (
+            convert_name_to_filename("Käsekuchen", transliterations={}) == "kasekuchen"
+        )
+
+    def test_eszett_transliterated(self):
+        assert convert_name_to_filename("Straße") == "strasse"
 
 
 class TestCombineProductionRuns:

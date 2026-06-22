@@ -1,5 +1,5 @@
 [project]
-name = "wright"
+name = "wright-core"
 version = "0.1.0"
 description = "Multi-domain Python library for bill-of-materials planning, recipe costing, shopping list aggregation, unit conversion, allergen detection, and nutrition analysis. Works for food recipes, construction, brewing, and manufacturing."
 readme = "README.md"
@@ -50,8 +50,19 @@ Issues = "https://github.com/3pm-baking/wright/issues"
 Documentation = "https://wright.germanbakingasheville.com"
 
 [build-system]
-requires = ["uv_build>=0.8.17,<0.9.0"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/wright/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wright"]
 
 [tool.uv]
 package = true

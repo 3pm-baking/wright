@@ -126,7 +126,7 @@ description: Complete API reference for wright — models, costing, matching, pl
       members:
         - ProductionItem
         - ProductionRun
-        - convert_recipe_name_to_filename
+        - convert_name_to_filename
 
 ## `wright.errors`
 
