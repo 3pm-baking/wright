@@ -15,12 +15,18 @@ pip install wright-core
 from decimal import Decimal
 from datetime import date
 from wright import (
-    Recipe, Ingredient, RecipeComponent,
+    Recipe,
+    Ingredient,
+    RecipeComponent,
     Purchase,
-    ProductionRun, ProductionItem,
-    calculate_recipe_cost, generate_shopping_list,
-    calculate_shopping_list_cost, analyze_menu,
-    detect_allergens, detect_dietary_properties,
+    ProductionRun,
+    ProductionItem,
+    calculate_recipe_cost,
+    generate_shopping_list,
+    calculate_shopping_list_cost,
+    analyze_menu,
+    detect_allergens,
+    detect_dietary_properties,
 )
 
 # 1. Define a recipe
@@ -50,7 +56,7 @@ groceries = [
 
 # 3. Cost the recipe
 cost = calculate_recipe_cost(recipe, groceries)
-print(cost.total_cost_range.midpoint)        # → 1.32
+print(cost.total_cost_range.midpoint)  # → 1.32
 print(cost.cost_per_serving_range.midpoint)  # → 1.32
 
 # 4. Plan a production run
@@ -60,7 +66,7 @@ session = ProductionRun(
     target_dates=[date(2026, 6, 20)],
 )
 shopping = generate_shopping_list(session, [recipe])
-print(shopping.production_summary)           # → ['3× Overnight Oats']
+print(shopping.production_summary)  # → ['3× Overnight Oats']
 
 # 5. Detect allergens and dietary badges
 allergy_map = {"milk": "Dairy", "egg": "Eggs"}

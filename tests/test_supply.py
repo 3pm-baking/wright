@@ -49,22 +49,18 @@ class TestStockInit:
         assert not s
 
     def test_from_items(self):
-        s = Stock(
-            [
-                SupplyItem(name="Flour", quantity=500, unit="g"),
-                SupplyItem(name="Sugar", quantity=200, unit="g"),
-            ]
-        )
+        s = Stock([
+            SupplyItem(name="Flour", quantity=500, unit="g"),
+            SupplyItem(name="Sugar", quantity=200, unit="g"),
+        ])
         assert len(s) == 2
         assert s["Flour"].quantity == 500
 
     def test_merges_same_name(self):
-        s = Stock(
-            [
-                SupplyItem(name="Flour", quantity=500, unit="g"),
-                SupplyItem(name="Flour", quantity=300, unit="g"),
-            ]
-        )
+        s = Stock([
+            SupplyItem(name="Flour", quantity=500, unit="g"),
+            SupplyItem(name="Flour", quantity=300, unit="g"),
+        ])
         assert len(s) == 1
         assert s["Flour"].quantity == 800
 
@@ -97,9 +93,9 @@ class TestStockAdd:
         assert s2["Flour"].quantity == 1500
 
     def test_add_merges_tags(self):
-        s = Stock(
-            [SupplyItem(name="Butter", quantity=200, unit="g", tags=["unsalted"])]
-        )
+        s = Stock([
+            SupplyItem(name="Butter", quantity=200, unit="g", tags=["unsalted"])
+        ])
         s2 = s.add([SupplyItem(name="Butter", quantity=100, unit="g")])
         assert s2["Butter"].tags == ["unsalted"]
 
@@ -166,19 +162,15 @@ class TestStockUse:
         assert len(deficit) == 0
 
     def test_multiple_items(self):
-        s = Stock(
-            [
-                SupplyItem(name="Flour", quantity=1000, unit="g"),
-                SupplyItem(name="Sugar", quantity=100, unit="g"),
-            ]
-        )
-        s2, deficit = s.use(
-            [
-                SupplyItem(name="Flour", quantity=500, unit="g"),
-                SupplyItem(name="Sugar", quantity=200, unit="g"),
-                SupplyItem(name="Eggs", quantity=6, unit="each"),
-            ]
-        )
+        s = Stock([
+            SupplyItem(name="Flour", quantity=1000, unit="g"),
+            SupplyItem(name="Sugar", quantity=100, unit="g"),
+        ])
+        s2, deficit = s.use([
+            SupplyItem(name="Flour", quantity=500, unit="g"),
+            SupplyItem(name="Sugar", quantity=200, unit="g"),
+            SupplyItem(name="Eggs", quantity=6, unit="each"),
+        ])
         names = {r.name for r in deficit}
         assert names == {"Sugar", "Eggs"}
         sugar = next(r for r in deficit if r.name == "Sugar")
@@ -252,12 +244,10 @@ class TestStockYAML:
         assert "Flour" in s
 
     def test_to_yaml(self, tmp_path: Path):
-        s = Stock(
-            [
-                SupplyItem(name="Flour", quantity=500, unit="g"),
-                SupplyItem(name="Sugar", quantity=200, unit="g"),
-            ]
-        )
+        s = Stock([
+            SupplyItem(name="Flour", quantity=500, unit="g"),
+            SupplyItem(name="Sugar", quantity=200, unit="g"),
+        ])
         path = tmp_path / "out.yaml"
         s.to_yaml(path)
         s2 = Stock.from_yaml(path)

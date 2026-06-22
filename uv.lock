@@ -1287,7 +1287,7 @@ wheels = [
 ]
 
 [[package]]
-name = "wright"
+name = "wright-core"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

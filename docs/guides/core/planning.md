@@ -41,6 +41,7 @@ def fuzzy_matcher(ingredient, groceries):
         and g.matches_requirements(ingredient.require_tags)
     ]
 
+
 cost = calculate_recipe_cost(recipe, groceries, matcher=fuzzy_matcher)
 ```
 
@@ -110,8 +111,12 @@ from wright import categorize_item, CategoryRule
 
 rules = [
     CategoryRule(category="Dry Goods", priority=0, keywords=["flour", "sugar", "rice"]),
-    CategoryRule(category="Dairy & Eggs", priority=1, keywords=["butter", "milk", "cream", "egg"]),
-    CategoryRule(category="Produce", priority=2, keywords=["spinach", "apple", "lemon"]),
+    CategoryRule(
+        category="Dairy & Eggs", priority=1, keywords=["butter", "milk", "cream", "egg"]
+    ),
+    CategoryRule(
+        category="Produce", priority=2, keywords=["spinach", "apple", "lemon"]
+    ),
 ]
 
 for item in shopping.all_items:

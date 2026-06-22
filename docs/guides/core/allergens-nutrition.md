@@ -58,6 +58,7 @@ def my_properties(ingredient):
         props.add("gluten-free")
     return frozenset(props)
 
+
 badges = detect_dietary_properties(recipe, ingredient_properties=my_properties)
 ```
 
@@ -76,8 +77,10 @@ registry = {
 macros = calculate_recipe_macros(recipe, nutrition_registry=registry)
 # → RecipeMacros(.recipe_name, .total, .per_serving)
 
-print(f"Per serving: {macros.per_serving.kcal:.0f} kcal, "
-      f"{macros.per_serving.protein_g:.0f}g protein")
+print(
+    f"Per serving: {macros.per_serving.kcal:.0f} kcal, "
+    f"{macros.per_serving.protein_g:.0f}g protein"
+)
 ```
 
 For live lookups (USDA API, etc.), pass `ingredient_nutrition_lookup`:
@@ -86,6 +89,7 @@ For live lookups (USDA API, etc.), pass `ingredient_nutrition_lookup`:
 def usda_lookup(name: str) -> NutritionInfo | None:
     result = fetch_from_usda(name)
     return NutritionInfo(**result) if result else None
+
 
 macros = calculate_recipe_macros(
     recipe,

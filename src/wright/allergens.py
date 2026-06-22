@@ -28,57 +28,51 @@ BADGE_IMPLIES: dict[str, set[str]] = {
 
 # ── Default dietary keyword sets (English food vocabulary) ──────────────────
 
-DEFAULT_NON_VEGAN_KEYS: frozenset[str] = frozenset(
-    {
-        "egg",
-        "honey",
-        "gelatin",
-        "lard",
-        "meat",
-        "chicken",
-        "beef",
-        "pork",
-        "fish",
-        "shrimp",
-        "anchovy",
-        "milk",
-        "cream",
-        "butter",
-        "cheese",
-        "yogurt",
-        "sour cream",
-        "cream cheese",
-        "whey",
-        "casein",
-    }
-)
+DEFAULT_NON_VEGAN_KEYS: frozenset[str] = frozenset({
+    "egg",
+    "honey",
+    "gelatin",
+    "lard",
+    "meat",
+    "chicken",
+    "beef",
+    "pork",
+    "fish",
+    "shrimp",
+    "anchovy",
+    "milk",
+    "cream",
+    "butter",
+    "cheese",
+    "yogurt",
+    "sour cream",
+    "cream cheese",
+    "whey",
+    "casein",
+})
 """Default ingredient-name keywords that disqualify vegan."""
 
-DEFAULT_DAIRY_KEYS: frozenset[str] = frozenset(
-    {
-        "milk",
-        "cream",
-        "butter",
-        "cheese",
-        "yogurt",
-        "sour cream",
-        "cream cheese",
-        "whey",
-        "casein",
-    }
-)
+DEFAULT_DAIRY_KEYS: frozenset[str] = frozenset({
+    "milk",
+    "cream",
+    "butter",
+    "cheese",
+    "yogurt",
+    "sour cream",
+    "cream cheese",
+    "whey",
+    "casein",
+})
 """Default ingredient-name keywords that disqualify dairy-free."""
 
-DEFAULT_GLUTEN_KEYS: frozenset[str] = frozenset(
-    {
-        "flour",
-        "wheat",
-        "barley",
-        "rye",
-        "spelt",
-        "semolina",
-    }
-)
+DEFAULT_GLUTEN_KEYS: frozenset[str] = frozenset({
+    "flour",
+    "wheat",
+    "barley",
+    "rye",
+    "spelt",
+    "semolina",
+})
 """Default ingredient-name keywords that disqualify gluten-free."""
 
 _WHEAT_ALLERGEN_KEYS: frozenset[str] = frozenset({"flour", "wheat"})
