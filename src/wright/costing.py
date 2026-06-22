@@ -454,15 +454,13 @@ def _cost_recipe_inner(
                     sub_recipe.net_weight_grams is None
                     or sub_recipe.net_weight_grams <= 0
                 ):
-                    raise RecipeCostErrors(
-                        [
-                            ValueError(
-                                f"Sub-recipe '{ref_name}' has no "
-                                "net_weight_grams — cannot compute "
-                                "per-gram cost for product_ref."
-                            )
-                        ]
-                    )
+                    raise RecipeCostErrors([
+                        ValueError(
+                            f"Sub-recipe '{ref_name}' has no "
+                            "net_weight_grams — cannot compute "
+                            "per-gram cost for product_ref."
+                        )
+                    ])
 
                 yield_dec = Decimal(str(sub_recipe.net_weight_grams))
                 per_gram = PriceRange(

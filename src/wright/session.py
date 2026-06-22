@@ -127,7 +127,8 @@ def convert_name_to_filename(
         for char, replacement in transliterations.items():
             filename = filename.replace(char, replacement)
     filename = (
-        unicodedata.normalize("NFKD", filename)
+        unicodedata
+        .normalize("NFKD", filename)
         .encode("ascii", "ignore")
         .decode("ascii")
     )
