@@ -6,6 +6,7 @@ Data-source agnostic — assemblies are referenced by name, not loaded here.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date as DateType
 
 from pydantic import BaseModel, Field, model_validator
@@ -86,20 +87,50 @@ class ProductionRun(BaseModel):
         )
 
 
-def convert_recipe_name_to_filename(recipe_name: str) -> str:
-    """Convert recipe name to kebab-case filename.
+# Default German umlaut transliterations (ä → ae, ö → oe, ü → ue, ß → ss).
+_DEFAULT_TRANSLITERATIONS: dict[str, str] = {
+    "ä": "ae",
+    "ö": "oe",
+    "ü": "ue",
+    "ß": "ss",
+}
+
+
+def convert_name_to_filename(
+    name: str,
+    *,
+    transliterations: dict[str, str] | None = _DEFAULT_TRANSLITERATIONS,
+) -> str:
+    """Convert an assembly name to kebab-case filename.
+
+    Accented characters are decomposed via Unicode NFKD normalization
+    (``é → e``, ``ñ → n``).  German umlauts are transliterated to their
+    digraph equivalents (``ä → ae``, ``ö → oe``, ``ü → ue``, ``ß → ss``)
+    by default.  Pass ``transliterations={}`` to skip, or provide your own
+    mappings for other scripts.
 
     Examples:
-        ``'German Cheese Cake'`` → ``'german-cheese-cake'``
-        ``'Russischer Zupfkuchen'`` → ``'russischer-zupfkuchen'``
+        ``'Chocolate Chip Cookie'`` → ``'chocolate-chip-cookie'``
+        ``'Käsekuchen'`` → ``'kaesekuchen'``
 
     Args:
-        recipe_name: The recipe name.
+        name: The assembly name.
+        transliterations: Optional mapping of character → replacement
+            string.  Applied before NFKD normalization.  Defaults to
+            German umlaut digraphs.
 
     Returns:
         Kebab-case filename without extension.
     """
-    filename = recipe_name.lower()
+    filename = name.lower()
+    if transliterations:
+        for char, replacement in transliterations.items():
+            filename = filename.replace(char, replacement)
+    filename = (
+        unicodedata.normalize("NFKD", filename)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
     filename = re.sub(r"['']", "", filename)
     filename = re.sub(r"[^a-z0-9\s-]", "", filename)
     filename = re.sub(r"\s+", "-", filename)

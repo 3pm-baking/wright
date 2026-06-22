@@ -6,7 +6,10 @@ Subclass to add domain-specific metadata (pricing, translations, etc.).
 
 from importlib.metadata import version as _version
 
-__version__ = _version("wright")
+try:
+    __version__ = _version("wright-core")
+except Exception:
+    __version__ = "0.0.0"
 
 from wright.allergens import (
     DEFAULT_DAIRY_KEYS,
@@ -69,6 +72,7 @@ from wright.models import (
     MacroPerServing,
     Material,
     NutritionInfo,
+    NutritionRegistry,
     PriceRange,
     Purchase,
     PurchasedItem,
@@ -105,7 +109,7 @@ from wright.pricing import (
 from wright.session import (
     ProductionItem,
     ProductionRun,
-    convert_recipe_name_to_filename,
+    convert_name_to_filename,
 )
 from wright.supply import (
     Stock,
@@ -126,29 +130,33 @@ __all__ = [
     "__version__",
     # Models
     "Assembly",
-    "Material",
-    "Ingredient",
-    "Component",
-    "Recipe",
-    "CategoryRule",
-    "DEFAULT_CATEGORY_RULES",
-    "FoodRecord",
-    "PurchasedItem",
-    "IngredientCost",
-    "PriceRange",
-    "RecipeComponent",
-    "RecipeCost",
-    "ServingRange",
-    "Servings",
-    "Purchase",
     "BaseIngredient",
     "BaseRecipe",
+    "CategoryRule",
+    "Component",
+    "DEFAULT_CATEGORY_RULES",
     "DensityData",
+    "FoodRecord",
+    "Ingredient",
+    "IngredientCost",
+    "MacroPerServing",
+    "Material",
+    "NutritionInfo",
+    "NutritionRegistry",
+    "PriceRange",
+    "Purchase",
+    "PurchasedItem",
+    "Recipe",
+    "RecipeComponent",
+    "RecipeCost",
+    "RecipeMacros",
+    "ServingRange",
+    "Servings",
     "VolumeWeightConversions",
     "categorize_item",
     # Errors
-    "PurchaseLoadError",
     "IngredientNotFoundError",
+    "PurchaseLoadError",
     "RecipeCoreError",
     "RecipeCostErrors",
     "RecipeLoadError",
@@ -177,19 +185,15 @@ __all__ = [
     "calculate_ingredient_cost",
     "calculate_ingredient_cost_range",
     "calculate_recipe_cost",
+    "convert_ingredient_to_grams",
     "convert_with_density",
     "get_top_cost_drivers",
-    "convert_ingredient_to_grams",
     # Pricing
     "margin_price",
     "multiplier_price",
     "per_serving_price",
-    # Macros
+    # Nutrition & Macros
     "calculate_recipe_macros",
-    # Models
-    "MacroPerServing",
-    "NutritionInfo",
-    "RecipeMacros",
     # Allergens
     "DEFAULT_DAIRY_KEYS",
     "DEFAULT_GLUTEN_KEYS",
@@ -200,28 +204,28 @@ __all__ = [
     # Session
     "ProductionItem",
     "ProductionRun",
-    "convert_recipe_name_to_filename",
+    "convert_name_to_filename",
     # Planning
-    "IngredientGroup",
-    "MenuAnalysis",
-    "ShoppingItemWithCost",
-    "ShoppingList",
-    "calculate_shopping_list_cost",
     "analyze_menu",
     "calculate_item_costs",
+    "calculate_shopping_list_cost",
     "estimate_total_items",
     "format_quantity",
     "generate_shopping_list",
     "group_shopping_items",
+    "IngredientGroup",
+    "MenuAnalysis",
+    "ShoppingItemWithCost",
+    "ShoppingList",
     "normalize_metric",
-    "normalize_volume_us",
     "normalize_volume_to_ml",
-    # Loader (optional YAML convenience)
+    "normalize_volume_us",
+    # Loader
     "list_recipe_files",
     "load_base_recipe",
     "load_density_data",
-    "load_purchases",
     "load_nutrition_registry",
+    "load_purchases",
     "load_supplies",
     "load_yaml_file",
     # Supply

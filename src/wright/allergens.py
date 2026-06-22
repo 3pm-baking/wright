@@ -302,7 +302,7 @@ def detect_dietary_properties(
             all_callback_keys.update(cb_props)
 
         # Vegan
-        if cb_props and "vegan" in cb_props or cb_props:
+        if cb_props:
             pass
         else:
             for key in _non_vegan:

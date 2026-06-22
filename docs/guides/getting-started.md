@@ -8,7 +8,7 @@ description: Install wright with pip and go from zero to a costed, allergen-labe
 Three minutes to go from zero to a costed, allergen-labeled production plan.
 
 ```
-pip install wright
+pip install wright-core
 ```
 
 ```python

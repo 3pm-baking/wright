@@ -24,7 +24,7 @@ manufacturing BOMs — any domain where you need to aggregate named items with
 quantities and units into a consolidated supply list with costs.
 
 ```bash
-pip install wright
+pip install wright-core
 ```
 
 ## Recipes and ingredients
