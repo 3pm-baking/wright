@@ -123,7 +123,7 @@ def parse_quantity(
     Returns:
         A pint Quantity object.
     """
-    return (ureg or _ureg).Quantity(value, unit)
+    return (ureg or _ureg).Quantity(value, unit)  # type: ignore[return-value]  # ty:ignore[invalid-return-type]
 
 
 def are_compatible(
