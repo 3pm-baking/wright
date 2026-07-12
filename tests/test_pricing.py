@@ -13,8 +13,20 @@ from wright.pricing import margin_price, multiplier_price, per_serving_price
 class TestMarginPrice:
     def test_standard_margin(self):
         cost = Decimal("2.00")
-        price = margin_price(cost, 0.67)
+        price = margin_price(cost, Decimal("0.67"))
         # 2.00 / (1 - 0.67) = 2.00 / 0.33 = 6.0606...
+        expected = Decimal("2.00") / Decimal("0.33")
+        assert abs(price - expected) < Decimal("0.01")
+
+    def test_margin_as_decimal(self):
+        cost = Decimal("0.99")
+        price = margin_price(cost, Decimal("0.75"))
+        expected = Decimal("0.99") / Decimal("0.25")
+        assert price == expected
+
+    def test_margin_as_float(self):
+        cost = Decimal("2.00")
+        price = margin_price(cost, 0.67)
         expected = Decimal("2.00") / Decimal("0.33")
         assert abs(price - expected) < Decimal("0.01")
 
