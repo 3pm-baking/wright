@@ -26,6 +26,10 @@ class SupplyItem(BaseModel):
         default_factory=list, description="Required tags for matching"
     )
 
+    def __repr__(self) -> str:
+        tags = f" [{', '.join(self.tags)}]" if self.tags else ""
+        return f"SupplyItem({self.name}: {self.quantity}{self.unit}{tags})"
+
     def to_qty(self):
         """Return this item as a pint Quantity."""
         return parse_quantity(self.quantity, self.unit)
