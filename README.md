@@ -302,13 +302,16 @@ print(f"Deck materials: ${total}")
 
 # Cost breakdown by component (framing vs. surface)
 from wright import cost_by_component
+
 breakdown = cost_by_component(deck, prices)
 for comp, cost in breakdown.items():
     print(f"  {comp}: ${cost:.2f}")
 
 # Per-linear-foot cost
 per_foot = calculate_item_costs(
-    deck.all_materials, prices, per_unit=(1, "ft"),
+    deck.all_materials,
+    prices,
+    per_unit=(1, "ft"),
 )
 
 # ── Plan a weekend build session ───────────────────────────────────────────
