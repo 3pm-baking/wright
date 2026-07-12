@@ -75,7 +75,7 @@ hardware_prices = [
 # Cost individual materials
 materials_costed = calculate_item_costs(framing.materials, hardware_prices)
 for mc in materials_costed:
-    print(f"  {mc.item.name}: ${mc.total_cost} ({mc.store})")
+    print(f"  {mc.name}: ${mc.total_cost} ({mc.store})")
 
 # Use construction-specific categorization
 from wright import CategoryRule, categorize_item
@@ -131,27 +131,66 @@ from wright import Material, Component
 grain_bill = Component(
     name="Mash",
     materials=[
-        Material(name="Pilsner Malt", quantity=12, unit="lb"),
-        Material(name="Munich Malt", quantity=2, unit="lb"),
-        Material(name="Carapils", quantity=1, unit="lb"),
+        Material(name="Pilsner Malt", quantity=5, unit="kg"),
+        Material(name="Munich Malt", quantity=1, unit="kg"),
+        Material(name="Carapils", quantity=0.5, unit="kg"),
     ],
 )
 hop_schedule = Component(
     name="Boil Hops",
     materials=[
-        Material(name="Hallertau", quantity=2, unit="oz", require_tags=["4.5% AA"]),
-        Material(name="Saaz", quantity=1, unit="oz", require_tags=["3.2% AA"]),
+        Material(name="Hallertau", quantity=50, unit="g", require_tags=["4.5% AA"]),
+        Material(name="Saaz", quantity=25, unit="g", require_tags=["3.2% AA"]),
     ],
 )
 
-# Scale to a 5-gallon batch
-five_gallon_grain = grain_bill * 1.0  # 1x = ~15 lb grain bill
+# Scale to a standard batch
+five_gallon_grain = grain_bill * 1.0  # 1× = ~6.5 kg grain bill
 
 # Determine cost per batch
+from decimal import Decimal
+from wright import Purchase, calculate_item_costs, cost_by_component, Assembly
+
+supplier_prices = [
+    Purchase(name="Pilsner Malt", quantity=25, unit="kg", price=Decimal("42.00")),
+    Purchase(name="Munich Malt", quantity=25, unit="kg", price=Decimal("45.00")),
+    Purchase(name="Carapils", quantity=25, unit="kg", price=Decimal("44.00")),
+    Purchase(name="Hallertau", quantity=25, unit="g", price=Decimal("1.20")),
+    Purchase(name="Saaz", quantity=25, unit="g", price=Decimal("1.10")),
+]
+
+# Per-batch ingredient cost
 batch_cost = calculate_item_costs(
     grain_bill.materials + hop_schedule.materials,
     supplier_prices,
 )
+for mc in batch_cost:
+    print(f"  {mc.name}: ${mc.total_cost:.2f}")
+# → Pilsner Malt: $8.40
+# → Munich Malt: $1.80
+# → Carapils: $0.88
+# → Hallertau: $2.40
+# → Saaz: $1.10
+
+# Per-12oz cost (pint), proportionally scaled
+per_pint = calculate_item_costs(
+    grain_bill.materials + hop_schedule.materials,
+    supplier_prices,
+    per_unit=(12, "floz"),
+)
+for mc in per_pint:
+    print(f"  {mc.name}: ${mc.total_cost:.2f} per 12 floz")
+
+# Cost breakdown by component
+recipe = Assembly(
+    name="Pilsner",
+    components=[grain_bill, hop_schedule],
+)
+breakdown = cost_by_component(recipe, supplier_prices)
+for comp, total in breakdown.items():
+    print(f"  {comp}: ${total:.2f}")
+# → Mash: $11.08
+# → Boil Hops: $3.50
 ```
 
 ## Event planning

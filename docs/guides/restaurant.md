@@ -164,7 +164,7 @@ analysis = analyze_menu(menu, all_recipes, supplier_prices)
 
 print(f"Total ingredient cost: ${analysis.total_cost}")
 for item in analysis.top_drivers:
-    print(f"  {item.item.name}: ${item.total_cost} ({analysis.cost_share(item):.0%})")
+    print(f"  {item.name}: ${item.total_cost} ({analysis.cost_share(item):.0%})")
 ```
 
 This tells you where to negotiate with suppliers, substitute ingredients, or

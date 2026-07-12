@@ -68,18 +68,21 @@ description: Complete API reference for wright — models, costing, matching, pl
     options:
       members:
         - IngredientGroup
-        - ShoppingList
-        - ShoppingItemWithCost
+        - MaterialCost
         - MenuAnalysis
-        - generate_shopping_list
-        - calculate_shopping_list_cost
+        - ShoppingItemWithCost
+        - ShoppingList
         - analyze_menu
-        - group_shopping_items
-        - normalize_volume_us
-        - normalize_volume_to_ml
         - calculate_item_costs
+        - calculate_shopping_list_cost
+        - cost_by_component
         - estimate_total_items
         - format_quantity
+        - generate_shopping_list
+        - group_shopping_items
+        - normalize_metric
+        - normalize_volume_to_ml
+        - normalize_volume_us
 
 ## `wright.pricing`
 

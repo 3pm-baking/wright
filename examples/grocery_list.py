@@ -214,7 +214,7 @@ menu = analyze_menu(
 print("  Top cost drivers")
 for i, item in enumerate(menu.top_drivers[:5], 1):
     pct = menu.cost_share(item)
-    print(f"  {i}. {item.item.name:<22s} ${item.total_cost:>6.2f}  ({pct:.0%})")
+    print(f"  {i}. {item.name:<22s} ${item.total_cost:>6.2f}  ({pct:.0%})")
 
 print(divider)
 print()

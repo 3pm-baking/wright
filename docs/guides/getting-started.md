@@ -76,7 +76,7 @@ badges = detect_dietary_properties(recipe)
 # 6. Enrich shopping list with costs
 items = calculate_shopping_list_cost(shopping, groceries)
 for item in items:
-    print(f"{item.item.name}: ${item.total_cost}")
+    print(f"{item.name}: ${item.total_cost}")
 
 # 7. Analyze the full menu
 analysis = analyze_menu(
@@ -86,7 +86,7 @@ analysis = analyze_menu(
 )
 print(f"Total cost: ${analysis.total_cost}")
 for item in analysis.top_drivers:
-    print(f"  {item.item.name}: ${item.total_cost}")
+    print(f"  {item.name}: ${item.total_cost}")
 ```
 
 ## Next steps

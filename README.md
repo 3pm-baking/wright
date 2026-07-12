@@ -128,7 +128,7 @@ menu = analyze_menu(
     groceries,
 )
 for item in menu.top_drivers:
-    print(f"  {item.item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
+    print(f"  {item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
 # → Butter: $3.29 (35%)
 # → Flour: $2.39 (26%)
 ```
@@ -299,6 +299,17 @@ prices = [
 deck_costs = calculate_item_costs(deck.all_materials, prices)
 total = sum(c.total_cost for c in deck_costs if c.total_cost is not None)
 print(f"Deck materials: ${total}")
+
+# Cost breakdown by component (framing vs. surface)
+from wright import cost_by_component
+breakdown = cost_by_component(deck, prices)
+for comp, cost in breakdown.items():
+    print(f"  {comp}: ${cost:.2f}")
+
+# Per-linear-foot cost
+per_foot = calculate_item_costs(
+    deck.all_materials, prices, per_unit=(1, "ft"),
+)
 
 # ── Plan a weekend build session ───────────────────────────────────────────
 

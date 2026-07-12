@@ -83,7 +83,8 @@ from wright import margin_price, multiplier_price
 
 cost = Decimal("2.00")
 
-margin_price(cost, 0.67)  # → Decimal('6.06')  — 67% margin
+margin_price(cost, Decimal("0.67"))  # → Decimal('6.06')  — 67% margin
+margin_price(cost, 0.67)            # → Decimal('6.06')  — float also works
 multiplier_price(cost, 3)  # → Decimal('6.00')  — 3× cost
 ```
 
