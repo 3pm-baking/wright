@@ -11,20 +11,28 @@ from wright.errors import IngredientNotFoundError
 from wright.matching import chain, cheapest_picker
 from wright.models import (
     DEFAULT_CATEGORY_RULES,
+    Assembly,
+    Component,
     Ingredient,
+    Material,
     Purchase,
     Recipe,
     RecipeComponent,
     ServingRange,
 )
 from wright.planning import (
+    MaterialCost,
+    ShoppingItemWithCost,
     ShoppingList,
     analyze_menu,
+    calculate_item_costs,
     calculate_shopping_list_cost,
+    cost_by_component,
     estimate_total_items,
     format_quantity,
     generate_shopping_list,
     group_shopping_items,
+    normalize_metric,
     normalize_volume_us,
 )
 from wright.session import ProductionItem, ProductionRun
@@ -143,6 +151,42 @@ class TestNormalizeVolumeForGrocery:
     def test_tbsp_small_amount(self):
         qty, unit = normalize_volume_us(3, "tbsp")
         assert unit in ("tbsp", "ml")
+
+
+# ── Metric normalization (volume + weight) ─────────────────────────────────
+
+
+class TestNormalizeMetric:
+    @pytest.mark.parametrize(
+        "quantity,unit,expected_qty,expected_unit",
+        [
+            # Volume: >= 1 L → L (rounded to 2 decimals)
+            (2000, "ml", 2.0, "L"),
+            (2, "liter", 2.0, "L"),
+            (1.5, "L", 1.5, "L"),
+            (1000, "ml", 1.0, "L"),
+            # Volume: < 1 L → ml (rounded to 1 decimal)
+            (500, "ml", 500.0, "ml"),
+            (50, "ml", 50.0, "ml"),
+            (999, "ml", 999.0, "ml"),
+            (0.75, "L", 750.0, "ml"),
+            # Weight: >= 1 kg → kg (rounded to 2 decimals)
+            (2000, "g", 2.0, "kg"),
+            (1500, "g", 1.5, "kg"),
+            (1000, "g", 1.0, "kg"),
+            # Weight: < 1 kg → g (rounded to 1 decimal)
+            (500, "g", 500.0, "g"),
+            (999, "g", 999.0, "g"),
+            (0.3, "kg", 300.0, "g"),
+            # Pass-through (non-volume, non-weight)
+            (10, "each", 10, "each"),
+            (3, "box", 3, "box"),
+        ],
+    )
+    def test_normalize_metric(self, quantity, unit, expected_qty, expected_unit):
+        qty, u = normalize_metric(quantity, unit)
+        assert u == expected_unit
+        assert qty == pytest.approx(expected_qty)
 
 
 # ── Shopping list generation ────────────────────────────────────────────────
@@ -318,7 +362,7 @@ class TestAddCostsToShoppingList:
         )
         missing = [e for e in enriched if e.missing_price]
         assert len(missing) >= 1
-        assert any("Unobtainium" in e.item.name for e in missing)
+        assert any("Unobtainium" in e.name for e in missing)
 
 
 # ── Menu analysis ───────────────────────────────────────────────────────────
@@ -667,7 +711,7 @@ class TestCustomPicker:
             [a, b],
             picker=pick_cheapest,
         )
-        oats = next(e for e in enriched if e.item.name == "Rolled Oats")
+        oats = next(e for e in enriched if e.name == "Rolled Oats")
         assert oats.store == "Budget Mart"
         assert not oats.missing_price
 
@@ -690,7 +734,7 @@ class TestCustomPicker:
             [b],
             picker=chain(pick_nothing, cheapest_picker),
         )
-        oats = next(e for e in enriched if e.item.name == "Rolled Oats")
+        oats = next(e for e in enriched if e.name == "Rolled Oats")
         assert oats.store == "Budget Mart"
 
     def test_pinned_picker_with_analyze_menu(self, sample_recipes, density_data):
@@ -735,21 +779,17 @@ class TestCostIngredients:
 
         result = calculate_item_costs(items, purchases)
         assert len(result) == 2
-        tp = next(r for r in result if r.item.name == "Toothpicks")
-        fl = next(r for r in result if r.item.name == "Flour")
+        tp = next(r for r in result if r.name == "Toothpicks")
+        fl = next(r for r in result if r.name == "Flour")
         assert tp.total_cost == Decimal("2.00")
         assert fl.total_cost == Decimal("1.50")
 
     def test_missing_flagged(self):
-        from wright.planning import calculate_item_costs
-
         items = [Ingredient(name="Ghost", quantity=1, unit="each")]
         result = calculate_item_costs(items, [])
         assert result[0].missing_price
 
     def test_with_picker(self):
-        from wright.planning import calculate_item_costs
-
         items = [Ingredient(name="Flour", quantity=500, unit="g")]
         purchases = [
             Purchase(
@@ -769,3 +809,230 @@ class TestCostIngredients:
         ]
         result = calculate_item_costs(items, purchases, picker=cheapest_picker)
         assert result[0].store == "Cheap"
+
+
+# ── MaterialCost properties and alias ───────────────────────────────────────
+
+
+class TestMaterialCost:
+    @pytest.mark.parametrize(
+        "attr,expected",
+        [
+            ("name", "Barley"),
+            ("quantity", 10.0),
+            ("unit", "lb"),
+            ("tags", ["organic"]),
+        ],
+    )
+    def test_delegating_properties(self, attr, expected):
+        item = SupplyItem(name="Barley", quantity=10.0, unit="lb", tags=["organic"])
+        cost = MaterialCost(
+            item=item,
+            price_per_unit=Decimal("2.00"),
+            price_unit="lb",
+            total_cost=Decimal("20.00"),
+            store="Market",
+            purchase_date=date(2026, 6, 1),
+            missing_price=False,
+        )
+        assert getattr(cost, attr) == expected
+
+    def test_backward_compat_alias(self):
+        assert ShoppingItemWithCost is MaterialCost
+
+
+# ── per_unit scaling in calculate_item_costs ────────────────────────────────
+
+
+class TestCalculateItemCostsPerUnit:
+    @pytest.mark.parametrize(
+        "mat_qty,mat_unit,per_qty,per_unit_str,expected",
+        [
+            (10, "lb", 1, "lb", Decimal("2.00")),
+            (10, "lb", 12, "oz", Decimal("1.50")),
+        ],
+    )
+    def test_per_unit_scaling(self, mat_qty, mat_unit, per_qty, per_unit_str, expected):
+        items = [Ingredient(name="Barley", quantity=mat_qty, unit=mat_unit)]
+        purchases = [
+            Purchase(
+                name="Barley", quantity=mat_qty, unit=mat_unit, price=Decimal("20.00")
+            ),
+        ]
+        result = calculate_item_costs(
+            items, purchases, per_unit=(per_qty, per_unit_str)
+        )
+        assert len(result) == 1
+        assert result[0].total_cost == expected
+
+    @pytest.mark.parametrize(
+        "scenario,items,purchases,per_unit",
+        [
+            (
+                "missing_price",
+                [Ingredient(name="Ghost", quantity=10, unit="lb")],
+                [],
+                (1, "lb"),
+            ),
+            (
+                "incompatible_units",
+                [Ingredient(name="Cement", quantity=10, unit="lb")],
+                [
+                    Purchase(
+                        name="Cement", quantity=10, unit="lb", price=Decimal("20.00")
+                    )
+                ],
+                (1, "each"),
+            ),
+        ],
+    )
+    def test_per_unit_edge_cases(self, scenario, items, purchases, per_unit):
+        result = calculate_item_costs(items, purchases, per_unit=per_unit)
+        assert len(result) == 1
+
+    def test_per_unit_not_provided(self):
+        items = [Ingredient(name="Barley", quantity=10, unit="lb")]
+        purchases = [
+            Purchase(name="Barley", quantity=10, unit="lb", price=Decimal("20.00")),
+        ]
+        without = calculate_item_costs(items, purchases)
+        with_none = calculate_item_costs(items, purchases, per_unit=None)
+        assert without[0].total_cost == with_none[0].total_cost
+
+    def test_per_unit_preserves_fields(self):
+        items = [Ingredient(name="Barley", quantity=10, unit="lb")]
+        purchases = [
+            Purchase(
+                name="Barley",
+                quantity=10,
+                unit="lb",
+                price=Decimal("20.00"),
+                store="Grain Co",
+            ),
+        ]
+        without = calculate_item_costs(items, purchases)
+        with_per = calculate_item_costs(items, purchases, per_unit=(1, "lb"))
+        assert with_per[0].store == without[0].store
+        assert with_per[0].price_per_unit == without[0].price_per_unit
+        assert with_per[0].price_unit == without[0].price_unit
+
+
+# ── Component-level cost rollup ─────────────────────────────────────────────
+
+
+class TestCostByComponent:
+    @pytest.mark.parametrize(
+        "assembly,expected",
+        [
+            (
+                Assembly(
+                    name="Beverage",
+                    components=[
+                        Component(
+                            name="Ingredients",
+                            materials=[
+                                Material(name="Barley", quantity=10, unit="lb"),
+                                Material(name="Hops", quantity=4, unit="oz"),
+                            ],
+                        ),
+                        Component(
+                            name="Packaging",
+                            materials=[
+                                Material(name="Bottle", quantity=24, unit="each"),
+                            ],
+                        ),
+                    ],
+                ),
+                {"Ingredients": Decimal("25.00"), "Packaging": Decimal("12.00")},
+            ),
+            (
+                Assembly(
+                    name="Single",
+                    components=[
+                        Component(
+                            name="Solo",
+                            materials=[
+                                Material(name="Barley", quantity=10, unit="lb"),
+                            ],
+                        ),
+                    ],
+                ),
+                {"Solo": Decimal("20.00")},
+            ),
+        ],
+    )
+    def test_cost_breakdown(self, assembly, expected):
+        purchases = [
+            Purchase(name="Barley", quantity=10, unit="lb", price=Decimal("20.00")),
+            Purchase(name="Hops", quantity=4, unit="oz", price=Decimal("5.00")),
+            Purchase(name="Bottle", quantity=24, unit="each", price=Decimal("12.00")),
+        ]
+        result = cost_by_component(assembly, purchases)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "assembly,expected",
+        [
+            (Assembly(name="Empty"), {}),
+            (
+                Assembly(
+                    name="WithComponents",
+                    components=[Component(name="Dry", materials=[])],
+                ),
+                {"Dry": Decimal("0")},
+            ),
+        ],
+    )
+    def test_empty_edge_cases(self, assembly, expected):
+        result = cost_by_component(assembly, [])
+        assert result == expected
+
+    def test_mixed_priced_and_missing(self):
+        assembly = Assembly(
+            name="Brew",
+            components=[
+                Component(
+                    name="Ingredients",
+                    materials=[
+                        Material(name="Barley", quantity=10, unit="lb"),
+                        Material(name="Ghost", quantity=1, unit="each"),
+                    ],
+                ),
+            ],
+        )
+        purchases = [
+            Purchase(name="Barley", quantity=10, unit="lb", price=Decimal("20.00")),
+        ]
+        result = cost_by_component(assembly, purchases)
+        assert result["Ingredients"] == Decimal("20.00")
+
+    def test_picker_passes_through(self):
+        assembly = Assembly(
+            name="Brew",
+            components=[
+                Component(
+                    name="Ingredients",
+                    materials=[
+                        Material(name="Barley", quantity=10, unit="lb"),
+                    ],
+                ),
+            ],
+        )
+        purchases = [
+            Purchase(
+                name="Barley",
+                quantity=10,
+                unit="lb",
+                price=Decimal("20.00"),
+                store="Cheap",
+            ),
+            Purchase(
+                name="Barley",
+                quantity=10,
+                unit="lb",
+                price=Decimal("30.00"),
+                store="Pricey",
+            ),
+        ]
+        result = cost_by_component(assembly, purchases, picker=cheapest_picker)
+        assert result["Ingredients"] == Decimal("20.00")

@@ -255,7 +255,8 @@ def generate_shopping_list(
     assemblies: Iterable[Assembly],
     *,
     volume_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
-    display_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
+    display_normalizer: Callable[..., tuple[float, str]] | None = None,
+    category_rules: list | None = None,
     key_fn: Callable[[Material], tuple] | None = None,
     item_factory: Callable[[tuple, float, str, set[str]], SupplyItem] | None = None,
 ) -> ShoppingList:
@@ -274,10 +275,16 @@ def generate_shopping_list(
             called on each material to normalize units for accumulation.
             Defaults to :func:`normalize_volume_to_ml` (converts volume
             units to ml).
-        display_normalizer: Optional function ``(quantity, unit) -> (quantity, unit)``
-            called to format accumulated quantities for display.
-            Defaults to :func:`normalize_volume_us` (gallons,
-            quarts, floz, tbsp, tsp hierarchy).
+        display_normalizer: Optional function
+            ``(quantity, unit, *, name="") -> (quantity, unit)`` called to
+            format accumulated quantities for display.
+            Receives the ingredient ``name`` (from the grouping key) for
+            name-aware display decisions.  Defaults to
+            :func:`normalize_volume_us`.
+        category_rules: Optional list of :class:`CategoryRule` for
+            grouping items by department.  Pass
+            ``DEFAULT_CATEGORY_RULES`` for store layout grouping.
+            If None, all items go to ``"Other"``.
         key_fn: Optional function ``(material) -> tuple`` that produces a
             grouping key.  Defaults to ``(name, tuple(sorted(tags)))``.
             Use a custom key to group by vendor, department, or any
@@ -353,8 +360,9 @@ def generate_shopping_list(
 
     shopping_items: list[SupplyItem] = []
     for key, details in ingredient_totals.items():
-        display_qty, display_unit = (display_normalizer or normalize_volume_us)(
-            details["quantity"], details["unit"]
+        normalizer = display_normalizer or normalize_volume_us
+        display_qty, display_unit = normalizer(
+            details["quantity"], details["unit"], name=key[0]
         )
 
         shopping_items.append(
@@ -366,7 +374,7 @@ def generate_shopping_list(
             )
         )
 
-    grouped_items = group_shopping_items(shopping_items)
+    grouped_items = group_shopping_items(shopping_items, category_rules=category_rules)
 
     return ShoppingList(
         date=session.date,
@@ -418,6 +426,7 @@ def group_shopping_items(
 def normalize_volume_us(
     quantity: float,
     unit: str,
+    name: str = "",
 ) -> tuple[float, str]:
     """Convert volume units to grocery store formats.
 
@@ -426,6 +435,12 @@ def normalize_volume_us(
         - >= 1 quart (but < 1 gallon) → quarts
         - >= 8 floz (but < 1 quart) → fluid ounces
         - < 8 floz → keep original unit (tsp/tbsp for small amounts)
+
+    Args:
+        quantity: The quantity to normalize.
+        unit: The unit to normalize.
+        name: Ingredient name (ignored by this normalizer; accepted for
+            compatibility with name-aware display normalizers).
     """
     if unit.lower() not in VOLUME_UNITS:
         return quantity, unit
@@ -460,13 +475,24 @@ def normalize_volume_us(
 def normalize_metric(
     quantity: float,
     unit: str,
+    name: str = "",
 ) -> tuple[float, str]:
-    """Convert volume and weight units to metric display formats.
+    """Convert metric units to display-friendly forms (volume and weight).
 
-    Rules:
-        - Volume: >= 1 L → liters, < 1 L → ml
-        - Weight: >= 1 kg → kg, < 1 kg → g
-        - Non-volume/non-weight units passed through unchanged.
+    Volume rules:
+        - >= 1 L → L
+        - >= 100 ml (but < 1 L) → ml
+        - < 100 ml → keep original unit (tsp/tbsp often better for small)
+
+    Weight rules:
+        - >= 1 kg → kg
+        - < 1 kg → g
+
+    Args:
+        quantity: The quantity to normalize.
+        unit: The unit to normalize.
+        name: Ingredient name (ignored by this normalizer; accepted for
+            compatibility with name-aware display normalizers).
     """
     unit_lower = unit.lower()
 
@@ -501,8 +527,14 @@ def normalize_metric(
 
 
 @dataclass
-class ShoppingItemWithCost:
-    """Item enriched with pricing information."""
+class MaterialCost:
+    """Item enriched with pricing information.
+
+    Used for costing bill-of-materials items and shopping list items alike.
+    The underlying :class:`SupplyItem` is accessible via ``.item``, and
+    common fields (``name``, ``quantity``, ``unit``, ``tags``) are
+    exposed directly as properties for convenience.
+    """
 
     item: SupplyItem
     price_per_unit: Decimal | None
@@ -522,6 +554,32 @@ class ShoppingItemWithCost:
 
     missing_price: bool
     """``True`` if no grocery data was found for this item."""
+
+    # -- delegating properties -------------------------------------------------
+
+    @property
+    def name(self) -> str:
+        """Item name (delegates to :attr:`item.name`)."""
+        return self.item.name
+
+    @property
+    def quantity(self) -> float:
+        """Item quantity (delegates to :attr:`item.quantity`)."""
+        return self.item.quantity
+
+    @property
+    def unit(self) -> str:
+        """Item unit (delegates to :attr:`item.unit`)."""
+        return self.item.unit
+
+    @property
+    def tags(self) -> list[str]:
+        """Item tags (delegates to :attr:`item.tags`)."""
+        return self.item.tags
+
+
+ShoppingItemWithCost = MaterialCost
+"""Backward-compatibility alias for :class:`MaterialCost`."""
 
 
 def _default_price_display(
@@ -555,7 +613,7 @@ def _cost_one_item(
     matcher: ItemMatcher,
     picker: ItemPicker | None,
     price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]],
-) -> ShoppingItemWithCost:
+) -> MaterialCost:
     """Cost a single material against purchases — shared by both cost functions."""
     supply_item = SupplyItem(
         name=material.name,
@@ -575,7 +633,7 @@ def _cost_one_item(
                 selected = compatible_unit_recent_picker(material, matching)
 
         if selected is None:
-            return ShoppingItemWithCost(
+            return MaterialCost(
                 item=supply_item,
                 price_per_unit=None,
                 price_unit=material.unit,
@@ -589,7 +647,7 @@ def _cost_one_item(
 
         price_per_unit, display_unit = price_display_fn(supply_item, selected)
 
-        return ShoppingItemWithCost(
+        return MaterialCost(
             item=supply_item,
             price_per_unit=price_per_unit,
             price_unit=display_unit,
@@ -600,7 +658,7 @@ def _cost_one_item(
         )
 
     except Exception:
-        return ShoppingItemWithCost(
+        return MaterialCost(
             item=supply_item,
             price_per_unit=None,
             price_unit=material.unit,
@@ -620,7 +678,7 @@ def calculate_shopping_list_cost(
     picker: ItemPicker | None = None,
     price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]]
     | None = None,
-) -> list[ShoppingItemWithCost]:
+) -> list[MaterialCost]:
     """Enrich each item with cost information.
 
     For each item:
@@ -647,7 +705,11 @@ def calculate_shopping_list_cost(
             per-package otherwise.
 
     Returns:
-        List of ``ShoppingItemWithCost``, one per item.
+        List of ``MaterialCost``, one per item.
+
+    See Also:
+        :func:`calculate_item_costs` — for costing a flat list of
+        :class:`Material` items directly.
     """
     return [
         _cost_one_item(
@@ -676,12 +738,19 @@ def calculate_item_costs(
     picker: ItemPicker | None = None,
     price_display_fn: Callable[[SupplyItem, PurchasedItem], tuple[Decimal, str]]
     | None = None,
-) -> list[ShoppingItemWithCost]:
+    per_unit: tuple[float, str] | None = None,
+) -> list[MaterialCost]:
     """Cost arbitrary items — food, construction materials, tools, etc.
 
     Reuses the same matching, picking, and costing pipeline as
     :func:`calculate_shopping_list_cost`, but works on a flat list of
     ``Material`` instead of a ``ShoppingList``.
+
+    When ``per_unit`` is provided, each item's ``total_cost`` is scaled
+    to represent the cost for that unit quantity instead of the full
+    material quantity.  For example, if a BOM lists "10 lb Barley" with
+    ``total_cost=$20`` and ``per_unit=(12, "oz")``, the result will show
+    ``total_cost=$1.50`` (cost per 12 oz).
 
     Args:
         items: Items to cost (recipe ingredients, lumber, hardware, etc.).
@@ -694,11 +763,17 @@ def calculate_item_costs(
             for customizing unit price display.  Defaults to per-100g for
             metric weight units, per-100ml for metric volume units,
             per-package otherwise.
+        per_unit: Optional ``(quantity, unit)`` pair to scale costs to a
+            per-unit basis (e.g. ``(12, "oz")`` for cost per 12 oz).
 
     Returns:
-        List of ``ShoppingItemWithCost``, one per input item.
+        List of ``MaterialCost``, one per input item.
+
+    See Also:
+        :func:`calculate_recipe_cost` — for full recipe costing with
+        serving breakdown and per-ingredient cost ranges.
     """
-    return [
+    results = [
         _cost_one_item(
             item,
             purchases,
@@ -709,6 +784,97 @@ def calculate_item_costs(
         )
         for item in items
     ]
+
+    if per_unit is not None:
+        per_qty, per_unit_str = per_unit
+        results = _scale_to_per_unit(results, items, per_qty, per_unit_str)
+
+    return results
+
+
+def _scale_to_per_unit(
+    costs: list[MaterialCost],
+    materials: Sequence[Material],
+    per_qty: float,
+    per_unit_str: str,
+) -> list[MaterialCost]:
+    """Scale costs proportionally from material quantity to ``per_qty``.
+
+    For each pair ``(cost, material)``, scales ``total_cost`` by
+    ``per_qty_in_material_units / material.quantity`` using pint unit
+    conversion.  Items with incompatible units are left as-is.
+    """
+    scaled: list[MaterialCost] = []
+    for cost, material in zip(costs, materials, strict=False):
+        if cost.total_cost is None:
+            scaled.append(cost)
+            continue
+        try:
+            per_qty_pint = parse_quantity(per_qty, per_unit_str)
+            per_in_mat_units = float(per_qty_pint.to(material.unit).magnitude)
+            ratio = per_in_mat_units / material.quantity
+            new_total = cost.total_cost * Decimal(str(ratio))
+            scaled.append(
+                MaterialCost(
+                    item=cost.item,
+                    price_per_unit=cost.price_per_unit,
+                    price_unit=cost.price_unit,
+                    total_cost=new_total,
+                    store=cost.store,
+                    purchase_date=cost.purchase_date,
+                    missing_price=cost.missing_price,
+                )
+            )
+        except Exception:
+            scaled.append(cost)
+    return scaled
+
+
+# ---------------------------------------------------------------------------
+# Component-level cost rollup
+# ---------------------------------------------------------------------------
+
+
+def cost_by_component(
+    assembly: Assembly,
+    purchases: Iterable[PurchasedItem],
+    *,
+    density_data: DensityData | None = None,
+    matcher: ItemMatcher | None = None,
+    picker: ItemPicker | None = None,
+) -> dict[str, Decimal]:
+    """Calculate total cost per component for an assembly.
+
+    For each component, costs all materials using the same matching,
+    picking, and costing pipeline as :func:`calculate_item_costs`.
+
+    Args:
+        assembly: The assembly to analyze.
+        purchases: Available purchase price data.
+        density_data: Optional density data for unit conversion.
+        matcher: Optional custom matching function.
+        picker: Optional custom picking function.
+
+    Returns:
+        Dictionary mapping component name to its total cost (using
+        the midpoint of available price ranges when multiple sources
+        exist).  Components with no cost data contribute ``Decimal("0")``.
+    """
+    result: dict[str, Decimal] = {}
+    for component in assembly.components:
+        costs = calculate_item_costs(
+            component.materials,
+            purchases,
+            density_data=density_data,
+            matcher=matcher,
+            picker=picker,
+        )
+        total = sum(
+            (c.total_cost for c in costs if c.total_cost is not None),
+            Decimal("0"),
+        )
+        result[component.name] = total
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -731,12 +897,12 @@ class MenuAnalysis:
     """
 
     production: list[ProductionItem]
-    items: list[ShoppingItemWithCost]
+    items: list[MaterialCost]
     total_cost: Decimal | None
     missing_ingredients: list[str]
 
     @property
-    def top_drivers(self) -> list[ShoppingItemWithCost]:
+    def top_drivers(self) -> list[MaterialCost]:
         """Items with known costs, sorted by total_cost descending."""
         return [i for i in self.items if not i.missing_price]
 
@@ -748,7 +914,7 @@ class MenuAnalysis:
             Decimal("0"),
         )
 
-    def cost_share(self, item: ShoppingItemWithCost) -> float:
+    def cost_share(self, item: MaterialCost) -> float:
         """Return this item's share of total cost as a fraction 0–1."""
         base = self.total_cost if self.total_cost is not None else self.known_total
         if not base or item.total_cost is None:
