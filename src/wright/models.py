@@ -127,6 +127,10 @@ class Material(BaseModel):
         ),
     )
 
+    def __repr__(self) -> str:
+        tags = f" [{', '.join(self.require_tags)}]" if self.require_tags else ""
+        return f"Material({self.name}: {self.quantity}{self.unit}{tags})"
+
     def scale(self, factor: float) -> Material:
         """Return a new Material with quantity scaled by the given factor."""
         return Material(
@@ -298,6 +302,11 @@ class Assembly(BaseModel):
     def all_materials(self) -> list[Material]:
         """Flatten all materials across all components."""
         return [m for comp in self.components for m in comp.materials]
+
+    def __repr__(self) -> str:
+        comps = f"{len(self.components)} components, " if self.components else ""
+        mats = sum(len(c.materials) for c in self.components)
+        return f"Assembly({self.name}: {comps}{mats} materials)"
 
     def size_up(self, factor: float) -> Assembly:
         """Return a new Assembly with all material quantities scaled."""
@@ -621,6 +630,12 @@ class IngredientCost(BaseModel):
         ..., description="Source descriptions (e.g., 'Costco Kirkland')"
     )
 
+    def __repr__(self) -> str:
+        return (
+            f"IngredientCost({self.ingredient.name}: "
+            f"${self.price_range.min_price:.2f}–${self.price_range.max_price:.2f})"
+        )
+
 
 class RecipeCost(BaseModel):
     """Full cost breakdown for a recipe."""
@@ -634,6 +649,12 @@ class RecipeCost(BaseModel):
         ...,
         description="Cost per serving (accounting for serving range)",
     )
+
+    def __repr__(self) -> str:
+        return (
+            f"RecipeCost({self.recipe_name}: "
+            f"${self.total_cost_range.min_price:.2f}–${self.total_cost_range.max_price:.2f})"
+        )
 
 
 # ---------------------------------------------------------------------------
