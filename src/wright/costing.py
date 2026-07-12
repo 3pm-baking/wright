@@ -534,6 +534,10 @@ def calculate_recipe_cost(
     Raises:
         RecipeCostErrors: If any ingredients cannot be matched, converted,
             or if a cycle is detected.
+
+    See Also:
+        :func:`calculate_item_costs` — for per-item costing of arbitrary
+        materials (non-recipe BOM items).
     """
     density_data = density_data or {}
     recipe_index = recipe_index or {}
