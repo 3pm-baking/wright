@@ -69,21 +69,28 @@ from wright import calculate_shopping_list_cost
 
 items = calculate_shopping_list_cost(shopping, groceries)
 for item in items:
-    print(f"{item.item.name}: ${item.total_cost}")
+    print(f"{item.name}: ${item.total_cost}")
 
 total = sum(i.total_cost for i in items if i.total_cost is not None)
 ```
 
-Each `ShoppingItemWithCost` carries:
+Each `MaterialCost` carries:
 
 | Attribute | Description |
 |-----------|-------------|
-| `.item` | The `SupplyItem` from the shopping list |
+| `.item` | The underlying `SupplyItem` |
+| `.name` | Item name (flat access — delegates to `.item.name`) |
+| `.quantity` | Item quantity (flat access — delegates to `.item.quantity`) |
+| `.unit` | Item unit (flat access — delegates to `.item.unit`) |
+| `.tags` | Item tags (flat access — delegates to `.item.tags`) |
 | `.total_cost` | Cost for the required quantity (`Decimal` or `None`) |
 | `.store` | Where it was purchased |
 | `.price_per_unit` | Unit price from the purchase record |
 | `.price_unit` | Unit of the price (e.g. "g", "lb") |
 | `.purchase_date` | When the price was recorded |
+
+Backward compatibility: `ShoppingItemWithCost` is maintained as an alias of
+`MaterialCost`. Both names refer to the same class.
 
 ## Menu analysis
 
@@ -99,7 +106,7 @@ menu = analyze_menu(
 
 print(f"Total cost: ${menu.total_cost}")
 for item in menu.top_drivers:
-    print(f"  {item.item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
+    print(f"  {item.name}: ${item.total_cost} ({menu.cost_share(item):.0%})")
 ```
 
 ## Categorization
