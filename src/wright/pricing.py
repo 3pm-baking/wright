@@ -7,7 +7,7 @@ from decimal import Decimal
 from wright.models import PriceRange, RecipeCost
 
 
-def margin_price(cost: Decimal, margin: float) -> Decimal:
+def margin_price(cost: Decimal, margin: Decimal | float) -> Decimal:
     """Calculate a sale price from cost using a target margin.
 
     Uses the standard margin formula:
@@ -18,7 +18,8 @@ def margin_price(cost: Decimal, margin: float) -> Decimal:
 
     Args:
         cost: The ingredient (or total) cost.
-        margin: Target profit margin as a decimal (0 < margin < 1).
+        margin: Target profit margin as a ``Decimal`` or ``float``
+            (0 < margin < 1).
 
     Returns:
         Suggested sale price.
@@ -26,9 +27,10 @@ def margin_price(cost: Decimal, margin: float) -> Decimal:
     Raises:
         ValueError: If margin is not strictly between 0 and 1.
     """
-    if not (0 < margin < 1):
+    m = Decimal(str(margin))
+    if not (Decimal("0") < m < Decimal("1")):
         raise ValueError(f"Margin must be strictly between 0 and 1, got {margin}")
-    return cost / Decimal(str(1.0 - margin))
+    return cost / (Decimal("1") - m)
 
 
 def multiplier_price(cost: Decimal, multiplier: float) -> Decimal:
