@@ -225,6 +225,7 @@ def _resolve_badges(
 def detect_dietary_properties(
     recipe: Recipe,
     *,
+    resolve: bool = True,
     ingredient_properties: Callable[[Ingredient], frozenset[str]] | None = None,
     non_vegan_keys: frozenset[str] | None = None,
     dairy_keys: frozenset[str] | None = None,
@@ -258,6 +259,9 @@ def detect_dietary_properties(
 
     Args:
         recipe: The recipe to scan.
+        resolve: When ``True`` (default), returns display-ready badges with
+            redundant badges suppressed. When ``False``, returns raw badge
+            slugs (e.g. ``["vegan", "dairy-free"]``) without suppression.
         ingredient_properties: Optional callback ``(ingredient) -> frozenset[str]``
             that returns dietary properties for an ingredient from an
             external data source (e.g. purchase tags, brand database).
@@ -339,4 +343,6 @@ def detect_dietary_properties(
         if props.get(prop_name, False):
             raw_badges.append(prop_name)
 
+    if not resolve:
+        return raw_badges
     return _resolve_badges(raw_badges, _badge_display, _badge_implies)

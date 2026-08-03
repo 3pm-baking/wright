@@ -578,3 +578,87 @@ class TestCustomMatcherCosting:
 
         with pytest.raises(RecipeCostErrors):
             calculate_recipe_cost(recipe, simple_purchases, matcher=failing_matcher)
+
+
+class TestConvertIngredientToGrams:
+    def test_grams_direct(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Sugar", quantity=500, unit="g")
+        assert convert_ingredient_to_grams(ing) == 500.0
+
+    def test_kg_to_grams(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Sugar", quantity=2, unit="kg")
+        assert convert_ingredient_to_grams(ing) == 2000.0
+
+    def test_oz_to_grams(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Chicken", quantity=16, unit="oz")
+        result = convert_ingredient_to_grams(ing)
+        assert abs(result - 453.6) < 1.0
+
+    def test_packet_uses_equivalent(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(
+            name="Vanilla Sugar",
+            quantity=1,
+            unit="packet",
+            equivalent_quantity=8,
+            equivalent_unit="g",
+        )
+        assert convert_ingredient_to_grams(ing) == 8.0
+
+    def test_density_fallback_ml_to_grams_with_data(self, density_data):
+        """Milk in ml should convert to grams via density data."""
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Whole Milk", quantity=200, unit="ml")
+        # Without density data, this should raise
+        with pytest.raises(UnitConversionError):
+            convert_ingredient_to_grams(ing)
+
+        # With density data containing milk, it should work
+        milk_density = {"liquids": {"Whole Milk": 1.03}}
+        result = convert_ingredient_to_grams(
+            ing, density_data=milk_density, raise_on_error=False
+        )
+        assert abs(result - 206.0) < 1.0  # 200ml * 1.03 g/ml
+
+    def test_density_fallback_tbsp_to_grams(self, density_data):
+        """Volume units like tbsp should convert to grams via volume_weights."""
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Chia Seeds", quantity=2, unit="tbsp")
+        result = convert_ingredient_to_grams(
+            ing, density_data=density_data, raise_on_error=False
+        )
+        assert abs(result - 24.0) < 0.1  # 2 tbsp * 12 g/tbsp
+
+    def test_unresolvable_returns_zero_with_raise_false(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Mystery Liquid", quantity=200, unit="ml")
+        result = convert_ingredient_to_grams(ing, raise_on_error=False)
+        assert result == 0.0
+
+    def test_unresolvable_raises_with_raise_true(self):
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Mystery Liquid", quantity=200, unit="ml")
+        with pytest.raises(UnitConversionError):
+            convert_ingredient_to_grams(ing)
+
+    def test_density_data_empty_dict_behaves_like_none(self):
+        """density_data={} is falsy — no density fallback is attempted."""
+        from wright.costing import convert_ingredient_to_grams
+
+        ing = Ingredient(name="Whole Milk", quantity=200, unit="ml")
+        with pytest.raises(UnitConversionError):
+            convert_ingredient_to_grams(ing, density_data={})
+
+        result = convert_ingredient_to_grams(ing, density_data={}, raise_on_error=False)
+        assert result == 0.0

@@ -36,6 +36,16 @@ class TestSupplyItem:
         assert qty.magnitude == 500
         assert str(qty.units) == "gram"
 
+    def test_numeric_attrs_default_empty(self):
+        item = SupplyItem(name="Flour", quantity=500, unit="g")
+        assert item.numeric_attrs == {}
+
+    def test_numeric_attrs_set(self):
+        item = SupplyItem(
+            name="Chicken", quantity=200, unit="g", numeric_attrs={"protein_g": 62.0}
+        )
+        assert item.numeric_attrs == {"protein_g": 62.0}
+
 
 # ---------------------------------------------------------------------------
 # Stock
@@ -98,6 +108,38 @@ class TestStockAdd:
         ])
         s2 = s.add([SupplyItem(name="Butter", quantity=100, unit="g")])
         assert s2["Butter"].tags == ["unsalted"]
+
+    def test_add_preserves_numeric_attrs(self):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0},
+            )
+        ])
+        s2 = s.add([SupplyItem(name="Chicken", quantity=300, unit="g")])
+        assert s2["Chicken"].numeric_attrs == {"protein_g": 62.0}
+
+    def test_add_merges_numeric_attrs(self):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"shelf_life_days": 7},
+            )
+        ])
+        s2 = s.add([
+            SupplyItem(
+                name="Chicken",
+                quantity=300,
+                unit="g",
+                numeric_attrs={"shelf_life_days": 5},
+            )
+        ])
+        # _sum_quantities: last writer wins on conflict
+        assert s2["Chicken"].numeric_attrs["shelf_life_days"] == 5
 
 
 class TestStockUse:
@@ -183,6 +225,51 @@ class TestStockUse:
         s2, deficit = s.use([SupplyItem(name="Milk", quantity=500, unit="ml")])
         assert len(deficit) == 0
 
+    def test_use_preserves_numeric_attrs_on_deficit(self):
+        s = Stock([])
+        s2, deficit = s.use([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0},
+            )
+        ])
+        assert deficit[0].numeric_attrs == {"protein_g": 62.0}
+
+    def test_use_preserves_numeric_attrs_on_partial_deficit(self):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=200,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0},
+            )
+        ])
+        s2, deficit = s.use([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 155.0},
+            )
+        ])
+        assert deficit[0].numeric_attrs == {"protein_g": 155.0}
+        assert deficit[0].quantity == 300
+
+    def test_use_preserves_numeric_attrs_after_full_use(self):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0},
+            )
+        ])
+        s2, deficit = s.use([SupplyItem(name="Chicken", quantity=300, unit="g")])
+        assert len(deficit) == 0
+        assert s2["Chicken"].numeric_attrs == {"protein_g": 62.0}
+
 
 class TestStockRemove:
     def test_remove_existing(self):
@@ -210,6 +297,18 @@ class TestStockRemove:
         s = Stock([SupplyItem(name="Flour", quantity=1000, unit="g")])
         s2 = s.remove([SupplyItem(name="Flour", quantity=1, unit="kg")])
         assert "Flour" not in s2
+
+    def test_remove_preserves_numeric_attrs(self):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0},
+            )
+        ])
+        s2 = s.remove([SupplyItem(name="Chicken", quantity=200, unit="g")])
+        assert s2["Chicken"].numeric_attrs == {"protein_g": 62.0}
 
 
 class TestStockYAML:
@@ -260,6 +359,37 @@ class TestStockYAML:
         s.to_yaml(path)
         s2 = Stock.from_yaml(path)
         assert s == s2
+
+    def test_roundtrip_with_numeric_attrs(self, tmp_path: Path):
+        s = Stock([
+            SupplyItem(
+                name="Chicken",
+                quantity=500,
+                unit="g",
+                numeric_attrs={"protein_g": 62.0, "kcal": 165.0},
+            )
+        ])
+        path = tmp_path / "roundtrip-attrs.yaml"
+        s.to_yaml(path)
+        s2 = Stock.from_yaml(path)
+        assert s2["Chicken"].numeric_attrs == {"protein_g": 62.0, "kcal": 165.0}
+        assert s2 == s
+
+    def test_from_yaml_loads_numeric_attrs(self, tmp_path: Path):
+        data = {
+            "pantry": [
+                {
+                    "name": "Chicken",
+                    "quantity": 500,
+                    "unit": "g",
+                    "numeric_attrs": {"protein_g": 62.0},
+                }
+            ]
+        }
+        path = tmp_path / "pantry.yaml"
+        path.write_text(yaml.dump(data))
+        s = Stock.from_yaml(path)
+        assert s["Chicken"].numeric_attrs == {"protein_g": 62.0}
 
 
 class TestStockEquality:

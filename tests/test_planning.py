@@ -232,6 +232,154 @@ class TestGenerateShoppingList:
         oats = next(i for i in result.all_items if i.name == "Rolled Oats")
         assert oats.quantity == 150  # 50 * 3
 
+    def test_numeric_attrs_default_empty_on_supply_item(
+        self, sample_session, sample_recipes
+    ):
+        result = generate_shopping_list(sample_session, sample_recipes)
+        for item in result.all_items:
+            assert item.numeric_attrs == {}
+
+    def test_numeric_attrs_propagates_from_material(self, sample_recipes):
+        recipes = [
+            Recipe(
+                name="Oats",
+                components=[
+                    RecipeComponent(
+                        name="Base",
+                        ingredients=[
+                            Ingredient(
+                                name="Rolled Oats",
+                                quantity=50,
+                                unit="g",
+                                numeric_attrs={"protein_g": 6.75},
+                            ),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+        ]
+        session = ProductionRun(
+            date=date(2026, 6, 1),
+            production=[ProductionItem(assembly="Oats", quantity=1)],
+            target_dates=[date(2026, 6, 2)],
+        )
+        result = generate_shopping_list(session, recipes)
+        oats = next(i for i in result.all_items if i.name == "Rolled Oats")
+        assert oats.numeric_attrs == {"protein_g": 6.75}
+
+    def test_numeric_attrs_merge_sum(self, sample_recipes):
+        recipes = [
+            Recipe(
+                name="Oats",
+                components=[
+                    RecipeComponent(
+                        name="Base",
+                        ingredients=[
+                            Ingredient(
+                                name="Rolled Oats",
+                                quantity=50,
+                                unit="g",
+                                numeric_attrs={"protein_g": 6.75},
+                            ),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+            Recipe(
+                name="MoreOats",
+                components=[
+                    RecipeComponent(
+                        name="Base",
+                        ingredients=[
+                            Ingredient(
+                                name="Rolled Oats",
+                                quantity=100,
+                                unit="g",
+                                numeric_attrs={"protein_g": 13.5},
+                            ),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+        ]
+        session = ProductionRun(
+            date=date(2026, 6, 1),
+            production=[
+                ProductionItem(assembly="Oats", quantity=1),
+                ProductionItem(assembly="MoreOats", quantity=1),
+            ],
+            target_dates=[date(2026, 6, 2)],
+        )
+
+        def merge_sum(acc, inc):
+            return {k: acc.get(k, 0) + v for k, v in inc.items()}
+
+        result = generate_shopping_list(session, recipes, merge_numeric=merge_sum)
+        oats = next(i for i in result.all_items if i.name == "Rolled Oats")
+        assert oats.numeric_attrs["protein_g"] == 20.25  # 6.75 + 13.5
+
+    def test_numeric_attrs_merge_default_first_wins(self, sample_recipes):
+        recipes = [
+            Recipe(
+                name="Oats",
+                components=[
+                    RecipeComponent(
+                        name="Base",
+                        ingredients=[
+                            Ingredient(
+                                name="Rolled Oats",
+                                quantity=50,
+                                unit="g",
+                                numeric_attrs={"shelf_life_days": 60},
+                            ),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+            Recipe(
+                name="MoreOats",
+                components=[
+                    RecipeComponent(
+                        name="Base",
+                        ingredients=[
+                            Ingredient(
+                                name="Rolled Oats",
+                                quantity=100,
+                                unit="g",
+                                numeric_attrs={"shelf_life_days": 30},
+                            ),
+                        ],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+        ]
+        session = ProductionRun(
+            date=date(2026, 6, 1),
+            production=[
+                ProductionItem(assembly="Oats", quantity=1),
+                ProductionItem(assembly="MoreOats", quantity=1),
+            ],
+            target_dates=[date(2026, 6, 2)],
+        )
+        result = generate_shopping_list(session, recipes)
+        oats = next(i for i in result.all_items if i.name == "Rolled Oats")
+        assert oats.numeric_attrs["shelf_life_days"] == 60  # first wins
+
 
 class TestEstimateTotalItems:
     def test_range_servings(self):

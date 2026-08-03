@@ -64,6 +64,14 @@ class Purchase(BaseModel):
     price: Decimal = Field(..., description="Price in local currency")
     store: str | None = Field(default=None, description="Store name")
     purchased_date: date | None = Field(default=None, description="Date of purchase")
+    numeric_attrs: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Numerical attributes for this purchase item — macronutrients per "
+            "100g, shelf life in days, yield percentage, etc.  Used for "
+            "calculation and matching in downstream pipelines."
+        ),
+    )
 
     @property
     def tag_set(self) -> set[str]:
@@ -126,6 +134,13 @@ class Material(BaseModel):
             "assembly's materials instead of being looked up directly."
         ),
     )
+    numeric_attrs: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Numerical attributes for this material — scaled macronutrients, "
+            "shelf life, etc.  Set from matched purchase data or manually."
+        ),
+    )
 
     def __repr__(self) -> str:
         tags = f" [{', '.join(self.require_tags)}]" if self.require_tags else ""
@@ -142,6 +157,7 @@ class Material(BaseModel):
             equivalent_unit=self.equivalent_unit,
             byproduct=self.byproduct,
             product_ref=self.product_ref,
+            numeric_attrs=self.numeric_attrs,
         )
 
     def __mul__(self, factor: float) -> Material:
@@ -172,6 +188,7 @@ class Ingredient(Material):
             equivalent_unit=self.equivalent_unit,
             byproduct=self.byproduct,
             product_ref=self.product_ref,
+            numeric_attrs=self.numeric_attrs,
         )
 
 
@@ -297,6 +314,13 @@ class Assembly(BaseModel):
             "Author-assigned classifications (e.g., 'outdoor', 'weekend-project')."
         ),
     )
+    numeric_attrs: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Numerical attributes for this assembly — shelf life, "
+            "difficulty rating, etc.  Distinct from per-ingredient attrs."
+        ),
+    )
 
     @property
     def all_materials(self) -> list[Material]:
@@ -315,6 +339,7 @@ class Assembly(BaseModel):
             components=[comp.scale(factor) for comp in self.components],
             description=self.description,
             tags=self.tags,
+            numeric_attrs=self.numeric_attrs,
         )
 
     def __mul__(self, factor: float) -> Assembly:
@@ -369,6 +394,7 @@ class Recipe(Assembly):
                         equivalent_unit=m.equivalent_unit,
                         byproduct=m.byproduct,
                         product_ref=m.product_ref,
+                        numeric_attrs=m.numeric_attrs,
                     )
                 )
         return ingredients
@@ -406,6 +432,7 @@ class Recipe(Assembly):
             else None,
             description=self.description,
             tags=self.tags,
+            numeric_attrs=self.numeric_attrs,
         )
 
     def double(self) -> Recipe:

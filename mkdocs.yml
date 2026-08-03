@@ -38,5 +38,6 @@ nav:
       - Meal Prep: guides/meal-prep.md
       - Food Service: guides/restaurant.md
       - Beyond Food: guides/domains.md
+      - Macro Tracking: guides/macro-tracking.md
       - Customization: guides/customization.md
   - API Reference: api.md

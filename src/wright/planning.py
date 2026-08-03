@@ -250,6 +250,17 @@ def _default_item_factory(
     )
 
 
+def _default_merge_numeric(
+    accumulated: dict[str, float],
+    incoming: dict[str, float],
+) -> dict[str, float]:
+    """Default merge strategy: keep the first (accumulated) values.
+
+    Override with a callback that sums, averages, takes the min, etc.
+    """
+    return accumulated
+
+
 def generate_shopping_list(
     session: ProductionRun,
     assemblies: Iterable[Assembly],
@@ -259,6 +270,8 @@ def generate_shopping_list(
     category_rules: list | None = None,
     key_fn: Callable[[Material], tuple] | None = None,
     item_factory: Callable[[tuple, float, str, set[str]], SupplyItem] | None = None,
+    merge_numeric: Callable[[dict[str, float], dict[str, float]], dict[str, float]]
+    | None = None,
 ) -> ShoppingList:
     """Generate a consolidated shopping list from a production run.
 
@@ -306,12 +319,13 @@ def generate_shopping_list(
     """
     _key = key_fn or _default_key
     _build = item_factory or _default_item_factory
+    _merge = merge_numeric or _default_merge_numeric
     asm_map = _ensure_mapping(assemblies)
 
-    ingredient_totals: dict[
-        tuple,
-        dict,
-    ] = defaultdict(lambda: {"quantity": 0.0, "unit": None, "tags": set()})
+    def _blank_total() -> dict:
+        return {"quantity": 0.0, "unit": None, "tags": set(), "numeric_attrs": {}}
+
+    ingredient_totals: dict[tuple, dict] = defaultdict(_blank_total)
 
     production_summary: list[str] = []
 
@@ -338,6 +352,7 @@ def generate_shopping_list(
             if ingredient_totals[key]["unit"] is None:
                 ingredient_totals[key]["unit"] = unit_in
                 ingredient_totals[key]["quantity"] = qty_in
+                ingredient_totals[key]["numeric_attrs"] = dict(material.numeric_attrs)
             else:
                 existing_unit = ingredient_totals[key]["unit"]
                 existing_quantity = ingredient_totals[key]["quantity"]
@@ -356,6 +371,11 @@ def generate_shopping_list(
                 else:
                     ingredient_totals[key]["quantity"] = existing_quantity + qty_in
 
+                ingredient_totals[key]["numeric_attrs"] = _merge(
+                    ingredient_totals[key]["numeric_attrs"],
+                    material.numeric_attrs,
+                )
+
             ingredient_totals[key]["tags"].update(material.require_tags)
 
     shopping_items: list[SupplyItem] = []
@@ -365,14 +385,15 @@ def generate_shopping_list(
             details["quantity"], details["unit"], name=key[0]
         )
 
-        shopping_items.append(
-            _build(
-                key,
-                round(display_qty, 2),
-                display_unit,
-                details["tags"],
-            )
+        item = _build(
+            key,
+            round(display_qty, 2),
+            display_unit,
+            details["tags"],
         )
+        if isinstance(item, SupplyItem):
+            item.numeric_attrs = details.get("numeric_attrs", {})
+        shopping_items.append(item)
 
     grouped_items = group_shopping_items(shopping_items, category_rules=category_rules)
 
