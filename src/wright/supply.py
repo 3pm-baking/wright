@@ -25,6 +25,13 @@ class SupplyItem(BaseModel):
     tags: list[str] = Field(
         default_factory=list, description="Required tags for matching"
     )
+    numeric_attrs: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "Numerical attributes carried through the pipeline — macronutrients, "
+            "shelf life, etc.  Preserved when items are merged or split."
+        ),
+    )
 
     def __repr__(self) -> str:
         tags = f" [{', '.join(self.tags)}]" if self.tags else ""
@@ -170,6 +177,7 @@ class Stock:
                         name=entry["name"],
                         quantity=float(entry["quantity"]),
                         unit=entry["unit"],
+                        numeric_attrs=entry.get("numeric_attrs", {}),
                     )
                 )
             except (KeyError, TypeError, ValueError):
@@ -183,7 +191,16 @@ class Stock:
 
         data = {
             "pantry": [
-                {"name": item.name, "quantity": item.quantity, "unit": item.unit}
+                {
+                    "name": item.name,
+                    "quantity": item.quantity,
+                    "unit": item.unit,
+                    **(
+                        {"numeric_attrs": item.numeric_attrs}
+                        if item.numeric_attrs
+                        else {}
+                    ),
+                }
                 for item in self._items.values()
             ]
         }
@@ -253,6 +270,7 @@ def _use_item(
             quantity=deficit_qty,
             unit=needed.unit,
             tags=needed.tags,
+            numeric_attrs=needed.numeric_attrs,
         )
 
     # -- pint-compatible ----------------------------------------------------
@@ -278,6 +296,7 @@ def _use_item(
                 quantity=deficit_qty,
                 unit=needed.unit,
                 tags=needed.tags,
+                numeric_attrs=needed.numeric_attrs,
             )
         except Exception:
             pass
@@ -299,6 +318,7 @@ def _use_item(
             quantity=deficit_qty,
             unit=needed.unit,
             tags=needed.tags,
+            numeric_attrs=needed.numeric_attrs,
         )
 
     # -- can't convert ------------------------------------------------------
@@ -321,6 +341,7 @@ def _update_stock(
             quantity=new_qty,
             unit=stock_unit,
             tags=stock.tags,
+            numeric_attrs=stock.numeric_attrs,
         )
 
 
@@ -331,12 +352,15 @@ def _remove_stock(items_dict: dict[str, SupplyItem], name: str) -> None:
 
 def _sum_quantities(existing: SupplyItem, addition: SupplyItem) -> SupplyItem:
     """Add *addition* quantity to *existing*, handling unit conversion."""
+    merged_attrs = existing.numeric_attrs.copy()
+    merged_attrs.update(addition.numeric_attrs)
     if existing.unit.lower() == addition.unit.lower():
         return SupplyItem(
             name=existing.name,
             quantity=round(existing.quantity + addition.quantity, 4),
             unit=existing.unit,
             tags=existing.tags or addition.tags,
+            numeric_attrs=merged_attrs,
         )
 
     if are_compatible(addition.unit, existing.unit):
@@ -351,6 +375,7 @@ def _sum_quantities(existing: SupplyItem, addition: SupplyItem) -> SupplyItem:
                 quantity=round(existing.quantity + addition_in_existing, 4),
                 unit=existing.unit,
                 tags=existing.tags or addition.tags,
+                numeric_attrs=merged_attrs,
             )
         except Exception:
             pass
@@ -360,6 +385,7 @@ def _sum_quantities(existing: SupplyItem, addition: SupplyItem) -> SupplyItem:
         quantity=round(existing.quantity + addition.quantity, 4),
         unit=existing.unit,
         tags=existing.tags or addition.tags,
+        numeric_attrs=merged_attrs,
     )
 
 
@@ -371,6 +397,7 @@ def _subtract_quantity(existing: SupplyItem, deduction: SupplyItem) -> SupplyIte
             quantity=max(0.0, round(existing.quantity - deduction.quantity, 4)),
             unit=existing.unit,
             tags=existing.tags,
+            numeric_attrs=existing.numeric_attrs,
         )
 
     if are_compatible(deduction.unit, existing.unit):
@@ -385,6 +412,7 @@ def _subtract_quantity(existing: SupplyItem, deduction: SupplyItem) -> SupplyIte
                 quantity=max(0.0, round(existing.quantity - ded_in_existing, 4)),
                 unit=existing.unit,
                 tags=existing.tags,
+                numeric_attrs=existing.numeric_attrs,
             )
         except Exception:
             pass
@@ -394,4 +422,5 @@ def _subtract_quantity(existing: SupplyItem, deduction: SupplyItem) -> SupplyIte
         quantity=max(0.0, round(existing.quantity - deduction.quantity, 4)),
         unit=existing.unit,
         tags=existing.tags,
+        numeric_attrs=existing.numeric_attrs,
     )

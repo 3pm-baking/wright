@@ -173,6 +173,29 @@ def test_detect_dietary_properties(ingredients, expected):
     )
 
 
+def test_detect_dietary_properties_resolve_false_returns_raw_slugs():
+    """resolve=False returns raw slugs including implied badges.
+
+    A vegan recipe is implicitly dairy-free.  resolve=True suppresses the
+    redundant badge; resolve=False keeps it so downstream callers see the
+    full property set.
+    """
+    recipe = _recipe(
+        Ingredient(name="Almond Flour", quantity=300, unit="g"),
+        Ingredient(name="Sugar", quantity=100, unit="g"),
+    )
+
+    raw = detect_dietary_properties(
+        recipe, ingredient_properties=_name_props, resolve=False
+    )
+    assert raw == ["vegan", "dairy-free", "gluten-free"]
+
+    resolved = detect_dietary_properties(
+        recipe, ingredient_properties=_name_props, resolve=True
+    )
+    assert resolved == ["VEGAN", "GLUTEN-FREE"]
+
+
 class TestBadgeDisplay:
     def test_known_badges(self):
         assert BADGE_DISPLAY["vegan"] == "VEGAN"

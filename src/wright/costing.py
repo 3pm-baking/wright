@@ -358,17 +358,22 @@ def convert_ingredient_to_grams(
     *,
     raise_on_error: bool = True,
     ureg: pint.UnitRegistry | None = None,
+    density_data: DensityData | None = None,
 ) -> float:
     """Return the gram quantity for a material.
 
     For packet units, uses ``equivalent_quantity`` (e.g. 1 packet = 8 g).
     For gram units, uses quantity directly.
     For other weight units, converts via pint.
+    Falls back to density-based conversion when pint cannot convert
+    (e.g. volume units like ml → g for liquids).
 
     Args:
         material: The BOM item to resolve to grams.
         raise_on_error: If ``True`` (default), raises ``UnitConversionError``
             on failure.  If ``False``, returns ``0.0`` silently.
+        ureg: Optional pint unit registry.
+        density_data: Optional density data for volume→weight conversion.
 
     Returns:
         Gram quantity, or ``0.0`` when unresolvable and *raise_on_error* is ``False``.
@@ -386,12 +391,23 @@ def convert_ingredient_to_grams(
             return 0.0
         return material.equivalent_quantity
 
+    # Try pint direct conversion first
     try:
         return float(parse_quantity(material.quantity, unit_lower).to("g").magnitude)
-    except Exception as err:
-        if raise_on_error:
-            raise UnitConversionError(material.unit, "g", material.name) from err
-        return 0.0
+    except Exception:
+        pass
+
+    # Fall back to density conversion (handles volume → weight)
+    if density_data:
+        converted = convert_with_density(
+            material.name, material.quantity, material.unit, "g", density_data
+        )
+        if converted is not None:
+            return converted
+
+    if raise_on_error:
+        raise UnitConversionError(material.unit, "g", material.name)
+    return 0.0
 
 
 # ---------------------------------------------------------------------------

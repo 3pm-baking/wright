@@ -7,9 +7,12 @@ from decimal import Decimal
 import pytest
 
 from wright.models import (
+    Assembly,
     CategoryRule,
+    Component,
     Ingredient,
     IngredientCost,
+    Material,
     PriceRange,
     Purchase,
     Recipe,
@@ -246,6 +249,140 @@ class TestRecipe:
             servings={"min_servings": 4, "max_servings": 8},
         )
         assert r._servings_bounds() == (4, 8)
+
+
+class TestNumericAttrsIngredient:
+    def test_default_empty(self):
+        ing = Ingredient(name="Sugar", quantity=200, unit="g")
+        assert ing.numeric_attrs == {}
+
+    def test_set_and_get(self):
+        ing = Ingredient(
+            name="Chicken",
+            quantity=200,
+            unit="g",
+            numeric_attrs={"protein_g": 62.0, "kcal": 330},
+        )
+        assert ing.numeric_attrs["protein_g"] == 62.0
+        assert ing.numeric_attrs["kcal"] == 330.0
+
+    def test_scale_propagates(self):
+        ing = Ingredient(
+            name="Chicken", quantity=200, unit="g", numeric_attrs={"protein_g": 62.0}
+        )
+        scaled = ing.scale(0.5)
+        assert scaled.numeric_attrs == {"protein_g": 62.0}
+        assert scaled.quantity == 100
+
+    def test_subclass_inherits(self):
+        ing = Ingredient(
+            name="Milk", quantity=200, unit="ml", numeric_attrs={"protein_g": 6.8}
+        )
+        assert ing.numeric_attrs["protein_g"] == 6.8
+
+
+class TestNumericAttrsPurchase:
+    def test_default_empty(self):
+        g = Purchase(name="Sugar", quantity=1000, unit="g", price=Decimal("2.49"))
+        assert g.numeric_attrs == {}
+
+    def test_set_and_get(self):
+        g = Purchase(
+            name="Chicken Breast",
+            quantity=1,
+            unit="lb",
+            price=Decimal("5.99"),
+            numeric_attrs={"protein_g": 31.0, "kcal": 165},
+        )
+        assert g.numeric_attrs["protein_g"] == 31.0
+        assert g.numeric_attrs["kcal"] == 165.0
+
+    def test_macros(self):
+        g = Purchase(
+            name="Rolled Oats",
+            quantity=2,
+            unit="lb",
+            price=Decimal("3.49"),
+            numeric_attrs={
+                "protein_g": 13.5,
+                "carbs_g": 66.3,
+                "fat_g": 6.5,
+                "kcal": 375,
+            },
+        )
+        assert g.numeric_attrs["carbs_g"] == 66.3
+
+
+class TestAssemblyNumericAttrs:
+    def test_size_up_preserves(self):
+        asm = Assembly(
+            name="Brew",
+            components=[
+                Component(
+                    name="Ingredients",
+                    materials=[Material(name="Barley", quantity=10, unit="lb")],
+                )
+            ],
+            numeric_attrs={"shelf_life_days": 30},
+        )
+        scaled = asm.size_up(2)
+        assert scaled.numeric_attrs == {"shelf_life_days": 30}
+
+    def test_size_up_scales_materials_keeps_attrs(self):
+        asm = Assembly(
+            name="Brew",
+            components=[
+                Component(
+                    name="Ingredients",
+                    materials=[
+                        Material(
+                            name="Barley",
+                            quantity=10,
+                            unit="lb",
+                            numeric_attrs={"protein_g": 12.0},
+                        )
+                    ],
+                )
+            ],
+            numeric_attrs={"shelf_life_days": 30},
+        )
+        scaled = asm.size_up(2)
+        assert scaled.numeric_attrs == {"shelf_life_days": 30}
+        assert scaled.components[0].materials[0].quantity == 20
+        assert scaled.components[0].materials[0].numeric_attrs == {"protein_g": 12.0}
+
+    def test_recipe_size_up_preserves(self):
+        recipe = Recipe(
+            name="Cake",
+            components=[
+                RecipeComponent(
+                    name="Base",
+                    ingredients=[Ingredient(name="Flour", quantity=300, unit="g")],
+                )
+            ],
+            prep_time=5,
+            cook_time=5,
+            numeric_attrs={"shelf_life_days": 7},
+        )
+        scaled = recipe.size_up(2)
+        assert scaled.numeric_attrs == {"shelf_life_days": 7}
+        assert scaled.components[0].ingredients[0].quantity == 600
+
+    def test_recipe_double_preserves(self):
+        recipe = Recipe(
+            name="Cake",
+            components=[
+                RecipeComponent(
+                    name="Base",
+                    ingredients=[Ingredient(name="Flour", quantity=300, unit="g")],
+                )
+            ],
+            prep_time=5,
+            cook_time=5,
+            numeric_attrs={"shelf_life_days": 7},
+        )
+        doubled = recipe.double()
+        assert doubled.numeric_attrs == {"shelf_life_days": 7}
 
 
 class TestPurchase:
