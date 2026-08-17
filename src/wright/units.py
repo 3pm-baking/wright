@@ -40,6 +40,8 @@ DISCRETE_UNITS: frozenset[str] = frozenset({
     "ea",
     "piece",
     "pieces",
+    "clove",
+    "cloves",
 })
 """Units that represent countable items, not measurable quantities."""
 
@@ -69,16 +71,21 @@ VOLUME_UNITS: frozenset[str] = frozenset(
     {
         "tsp",
         "teaspoon",
+        "teaspoons",
         "tbsp",
         "tablespoon",
+        "tablespoons",
         "cup",
+        "cups",
         "floz",
         "fluid_ounce",
         "ml",
         "milliliter",
         "millilitre",
         "liter",
+        "liters",
         "litre",
+        "litres",
         "l",
     },
 )
