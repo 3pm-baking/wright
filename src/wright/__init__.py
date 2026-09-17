@@ -28,6 +28,7 @@ from wright.costing import (
     get_top_cost_drivers,
 )
 from wright.errors import (
+    IncompatibleUnitsError,
     IngredientNotFoundError,
     PurchaseLoadError,
     RecipeCoreError,
@@ -162,6 +163,7 @@ __all__ = [
     "RecipeCoreError",
     "RecipeCostErrors",
     "RecipeLoadError",
+    "IncompatibleUnitsError",
     "UnitConversionError",
     # Units
     "DISCRETE_UNITS",

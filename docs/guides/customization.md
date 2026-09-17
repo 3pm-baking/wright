@@ -82,6 +82,39 @@ shopping = generate_shopping_list(
 )
 ```
 
+## Accumulation units: density-aware volume_normalizer
+
+While `display_normalizer` controls what the shopper *sees*,
+`volume_normalizer` controls how quantities are *accumulated*.  It
+receives the ingredient name, so you can convert volume → weight per
+ingredient — the recommended way to let a recipe measuring flour in
+cups merge correctly with one measuring it in grams:
+
+```python
+from wright import generate_shopping_list
+
+
+def density_normalizer(quantity, unit, *, name=""):
+    """Convert volume units to grams using per-ingredient density data."""
+    grams = my_density_lookup(name, quantity, unit)  # your data source
+    if grams is not None:
+        return grams, "g"
+    return quantity, unit  # non-volume units pass through
+
+
+shopping = generate_shopping_list(
+    session,
+    recipes,
+    volume_normalizer=density_normalizer,
+    on_incompatible="raise",  # refuse ml+g sums instead of guessing
+)
+```
+
+The default (`on_incompatible="add"`) sums incompatible units numerically
+for backward compatibility — prefer `"raise"` plus a density-aware
+normalizer so bad data fails loudly instead of producing plausible-looking
+wrong totals.
+
 ## Nutrition: custom data source
 
 Pass your own registry or a callback for live lookups:
