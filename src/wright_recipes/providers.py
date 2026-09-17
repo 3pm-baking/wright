@@ -159,7 +159,7 @@ def make_provider(
     model = model or DEFAULT_MODELS[provider]
     if provider in ("openai", "gemini"):
         try:
-            import openai
+            import openai  # ty: ignore[unresolved-import]
         except ImportError as exc:
             raise ProviderError(
                 "The 'openai' package is not installed. "
@@ -207,7 +207,7 @@ def make_provider(
 
     if provider == "anthropic":
         try:
-            import anthropic
+            import anthropic  # ty: ignore[unresolved-import]
         except ImportError as exc:
             raise ProviderError(
                 "The 'anthropic' package is not installed. "
