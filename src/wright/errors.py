@@ -56,6 +56,28 @@ class UnitConversionError(RecipeCoreError):
         super().__init__(message)
 
 
+class IncompatibleUnitsError(RecipeCoreError):
+    """Raised when accumulation would sum quantities in incompatible units.
+
+    Adding e.g. ``3371 ml`` and ``600 g`` of the same ingredient produces a
+    meaningless number that only looks plausible on a shopping list.  With
+    ``on_incompatible="raise"`` the accumulation refuses instead.
+    """
+
+    def __init__(self, ingredient_name: str, unit_a: str, unit_b: str):
+        self.ingredient_name = ingredient_name
+        self.unit_a = unit_a
+        self.unit_b = unit_b
+        message = (
+            f"Cannot accumulate ingredient '{ingredient_name}': units "
+            f"'{unit_a}' and '{unit_b}' are incompatible and would be "
+            f"summed numerically. Provide a volume_normalizer that converts "
+            f"them to a common unit, or use on_incompatible='add' to restore "
+            f"the legacy (lossy) behavior."
+        )
+        super().__init__(message)
+
+
 class RecipeCostErrors(RecipeCoreError):
     """Raised when one or more ingredients in a recipe could not be costed.
 

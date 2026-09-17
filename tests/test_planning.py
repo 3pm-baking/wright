@@ -1184,3 +1184,120 @@ class TestCostByComponent:
         ]
         result = cost_by_component(assembly, purchases, picker=cheapest_picker)
         assert result["Ingredients"] == Decimal("20.00")
+
+
+class TestVolumeNormalizerContract:
+    """The accumulation volume_normalizer must receive the ingredient name.
+
+    Ingredient-aware normalization (e.g. density-based volume→weight) is
+    impossible without the name — the 2026-09-17 shopping-list bug (flour
+    totals inflated by ml+g numeric addition) was only fixable because
+    wright started passing ``name`` here.
+    """
+
+    def test_volume_normalizer_receives_ingredient_name(
+        self, sample_session, sample_recipes
+    ):
+        seen_names: list[str] = []
+
+        def normalizer(quantity, unit, *, name=""):
+            seen_names.append(name)
+            return quantity, unit
+
+        generate_shopping_list(
+            sample_session, sample_recipes, volume_normalizer=normalizer
+        )
+
+        assert "Rolled Oats" in seen_names
+        assert "Honey" in seen_names
+
+    def test_default_normalizer_accepts_name_kwarg(self):
+        from wright.planning import normalize_volume_to_ml
+
+        # Must not raise when called with the name kwarg (contract used by
+        # the accumulation loop).
+        assert normalize_volume_to_ml(1, "cup", name="Milk") == (
+            pytest.approx(236.588, rel=1e-4),
+            "ml",
+        )
+
+
+class TestIncompatibleUnitsPolicy:
+    """Mixing incompatible units (e.g. cup + g of the same ingredient) must
+    not silently produce a meaningless sum.
+
+    The 2026-09-17 bug: Almond Flour accumulated as ``600 g + 3371 ml =
+    3971`` and displayed as "3.97 kg" (true total ≈ 2.2 kg).  Silent
+    numeric addition of incompatible units is the root cause.
+    """
+
+    @staticmethod
+    def _mixed_unit_recipes():
+        return [
+            Recipe(
+                name="Cup Cake",
+                components=[
+                    RecipeComponent(
+                        name="Batter",
+                        ingredients=[Ingredient(name="Flour", quantity=2, unit="cup")],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+            Recipe(
+                name="Gram Cake",
+                components=[
+                    RecipeComponent(
+                        name="Batter",
+                        ingredients=[Ingredient(name="Flour", quantity=300, unit="g")],
+                    )
+                ],
+                prep_time=5,
+                cook_time=0,
+                servings=1,
+            ),
+        ]
+
+    @staticmethod
+    def _mixed_unit_session():
+        return ProductionRun(
+            date=date(2026, 6, 1),
+            production=[
+                ProductionItem(assembly="Cup Cake", quantity=1),
+                ProductionItem(assembly="Gram Cake", quantity=1),
+            ],
+            target_dates=[date(2026, 6, 2)],
+        )
+
+    def test_raise_policy_raises_incompatible_units_error(self):
+        from wright.errors import IncompatibleUnitsError
+
+        with pytest.raises(IncompatibleUnitsError):
+            generate_shopping_list(
+                self._mixed_unit_session(),
+                self._mixed_unit_recipes(),
+                on_incompatible="raise",
+            )
+
+    def test_add_policy_is_legacy_default(self):
+        """Default preserves pre-raise behavior for backward compatibility."""
+        result = generate_shopping_list(
+            self._mixed_unit_session(), self._mixed_unit_recipes()
+        )
+        flour = next(i for i in result.all_items if i.name == "Flour")
+        assert flour.quantity > 0
+
+    def test_error_message_names_ingredient_and_units(self):
+        from wright.errors import IncompatibleUnitsError
+
+        with pytest.raises(IncompatibleUnitsError) as exc_info:
+            generate_shopping_list(
+                self._mixed_unit_session(),
+                self._mixed_unit_recipes(),
+                on_incompatible="raise",
+            )
+        message = str(exc_info.value)
+        assert "Flour" in message
+        assert "ml" in message and "g" in message

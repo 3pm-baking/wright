@@ -42,6 +42,12 @@ DISCRETE_UNITS: frozenset[str] = frozenset({
     "pieces",
     "clove",
     "cloves",
+    "jar",
+    "jars",
+    "vial",
+    "vials",
+    "case",
+    "cases",
 })
 """Units that represent countable items, not measurable quantities."""
 

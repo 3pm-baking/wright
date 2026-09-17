@@ -14,7 +14,7 @@ from wright.costing import (
     calculate_ingredient_cost,
     convert_ingredient_to_grams,
 )
-from wright.errors import UnitConversionError
+from wright.errors import IncompatibleUnitsError, UnitConversionError
 from wright.matching import (
     ItemMatcher,
     ItemPicker,
@@ -80,10 +80,13 @@ def format_quantity(quantity: float) -> str:
 def normalize_volume_to_ml(
     quantity: float,
     unit: str,
+    *,
+    name: str = "",
 ) -> tuple[float, str]:
     """Convert volume units to ml for consistent accumulation.
 
-    Non-volume units are returned unchanged.
+    Non-volume units are returned unchanged.  ``name`` is accepted for
+    signature compatibility with ingredient-aware normalizers and ignored.
     """
     if unit.lower() not in VOLUME_UNITS:
         return quantity, unit
@@ -265,13 +268,14 @@ def generate_shopping_list(
     session: ProductionRun,
     assemblies: Iterable[Assembly],
     *,
-    volume_normalizer: Callable[[float, str], tuple[float, str]] | None = None,
+    volume_normalizer: Callable[..., tuple[float, str]] | None = None,
     display_normalizer: Callable[..., tuple[float, str]] | None = None,
     category_rules: list | None = None,
     key_fn: Callable[[Material], tuple] | None = None,
     item_factory: Callable[[tuple, float, str, set[str]], SupplyItem] | None = None,
     merge_numeric: Callable[[dict[str, float], dict[str, float]], dict[str, float]]
     | None = None,
+    on_incompatible: str = "add",
 ) -> ShoppingList:
     """Generate a consolidated shopping list from a production run.
 
@@ -284,10 +288,13 @@ def generate_shopping_list(
         assemblies: Assemblies referenced by production items (list or
             tuple). Must contain every assembly referenced by the
             session's production items.
-        volume_normalizer: Optional function ``(quantity, unit) -> (quantity, unit)``
+        volume_normalizer: Optional function
+            ``(quantity, unit, *, name="") -> (quantity, unit)``
             called on each material to normalize units for accumulation.
-            Defaults to :func:`normalize_volume_to_ml` (converts volume
-            units to ml).
+            Receives the ingredient ``name`` so callers can apply
+            ingredient-specific conversions (e.g. density-based
+            volume-to-weight).  Defaults to
+            :func:`normalize_volume_to_ml` (converts volume units to ml).
         display_normalizer: Optional function
             ``(quantity, unit, *, name="") -> (quantity, unit)`` called to
             format accumulated quantities for display.
@@ -308,6 +315,12 @@ def generate_shopping_list(
             Defaults to ``SupplyItem(name=key[0], ...)``.  Use a custom
             factory to produce subclass instances (e.g. ``ShoppingItem``
             with a ``vendor`` field).
+        on_incompatible: Policy when the same ingredient accumulates in
+            incompatible units (e.g. ``ml`` from cups and ``g`` from
+            grams).  ``"add"`` (default) preserves the legacy behavior of
+            summing the numbers — which produces a meaningless total.
+            ``"raise"`` raises :class:`IncompatibleUnitsError` instead.
+            Prefer a ``volume_normalizer`` that converts to a common unit.
 
     Returns:
         ``ShoppingList`` with grouped items.
@@ -341,12 +354,17 @@ def generate_shopping_list(
         ):
             if material.byproduct:
                 continue
+            if material.quantity == 0:
+                # Zero-quantity materials (e.g. "to taste" placeholders)
+                # contribute nothing and would only pollute the
+                # accumulator's unit.
+                continue
 
             key = _key(material)
 
             raw_qty, raw_unit = _apply_equivalent(material)
             qty_in, unit_in = (volume_normalizer or normalize_volume_to_ml)(
-                raw_qty, raw_unit
+                raw_qty, raw_unit, name=material.name
             )
 
             if ingredient_totals[key]["unit"] is None:
@@ -369,6 +387,8 @@ def generate_shopping_list(
                     except Exception:
                         ingredient_totals[key]["quantity"] = existing_quantity + qty_in
                 else:
+                    if on_incompatible == "raise":
+                        raise IncompatibleUnitsError(key[0], existing_unit, unit_in)
                     ingredient_totals[key]["quantity"] = existing_quantity + qty_in
 
                 ingredient_totals[key]["numeric_attrs"] = _merge(
