@@ -27,6 +27,39 @@ quantities and units into a consolidated supply list with costs.
 pip install wright-core
 ```
 
+## From recipe web page to shopping list
+
+The distribution ships a chainable CLI: an LLM extracts a validated recipe
+from any web page (you bring the provider SDK and key), and wright turns it
+into a consolidated shopping list deterministically.
+
+```bash
+# One pipe: recipe URL in, shopping list out
+uvx --with openai wright-core parse https://example.com/recipe | uvx wright-core shop
+
+# Or in two steps, with review in between
+uvx --with openai wright-core parse https://example.com/recipe > recipe.yaml
+uvx wright-core shop recipe.yaml --servings 12 --units metric
+
+# Per-recipe scaling, then consolidation
+uvx --with openai wright-core parse URL_A | uvx wright-core scale --servings 24 > a.json
+uvx --with openai wright-core parse URL_B | uvx wright-core scale --batches 2 > b.json
+uvx wright-core shop a.json b.json
+
+# Machine-readable output for agents (stdout)
+uvx --with openai wright-core parse URL | uvx wright-core shop --format json
+```
+
+Supported providers: OpenAI, Anthropic, Gemini (via its OpenAI-compatible
+endpoint). Pages with schema.org JSON-LD get authoritative structured input
+automatically. See the [agents guide](https://wright.germanbakingasheville.com/guides/agents/)
+for the full pipeline, the comparison with other tools, and how to call it
+from an agent.
+
+> **Package layout**: one distribution, two packages — `wright` is the pure
+> library (no I/O, no CLI, no LLM SDKs); `wright_recipes` is the application
+> layer (CLI, providers, fetch) and depends on wright, never the reverse.
+
 ## Recipes and ingredients
 
 ```python

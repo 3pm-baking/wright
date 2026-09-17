@@ -327,6 +327,28 @@ class Assembly(BaseModel):
         """Flatten all materials across all components."""
         return [m for comp in self.components for m in comp.materials]
 
+    @model_validator(mode="before")
+    @classmethod
+    def _map_ingredient_keys(cls, data: object) -> object:
+        """Accept ``ingredients`` keys inside component dicts.
+
+        Food-domain data (JSON-LD, LLM output, YAML) uses
+        ``ingredients``; the field is named ``materials``.  Mapping at
+        the assembly level keeps validation stable across repeated
+        calls (pydantic 2.13 caches overridden-field schemas, which can
+        skip subclass validators on later calls).
+        """
+        if isinstance(data, dict):
+            comps = data.get("components")
+            if isinstance(comps, list):
+                data["components"] = [
+                    {**c, "materials": c.pop("ingredients")}
+                    if isinstance(c, dict) and "ingredients" in c
+                    else c
+                    for c in comps
+                ]
+        return data
+
     def __repr__(self) -> str:
         comps = f"{len(self.components)} components, " if self.components else ""
         mats = sum(len(c.materials) for c in self.components)
@@ -360,12 +382,26 @@ class Recipe(Assembly):
     translations, etc.).
     """
 
+    components: list[RecipeComponent] = Field(
+        default_factory=list,
+        description=(
+            "Named groups of ingredients (e.g., dough, filling, topping). "
+            "Typed as RecipeComponent so 'ingredients' keys in JSON/YAML "
+            "map to materials instead of being silently dropped."
+        ),
+    )
     instructions: list[str] = Field(
         default_factory=list,
         description="Step-by-step preparation instructions",
     )
-    prep_time: int = Field(..., description="Preparation time in minutes")
-    cook_time: int = Field(..., description="Cooking/baking time in minutes")
+    prep_time: int | None = Field(
+        default=None,
+        description="Preparation time in minutes (None if not stated by the source)",
+    )
+    cook_time: int | None = Field(
+        default=None,
+        description="Cooking/baking time in minutes (None if not stated by the source)",
+    )
     servings: Servings | None = Field(
         default=None,
         description=(

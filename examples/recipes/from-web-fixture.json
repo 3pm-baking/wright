@@ -1,0 +1,29 @@
+{
+  "name": "Classic Banana Bread",
+  "description": "Extracted from a typical recipe blog page (fixture for offline demo)",
+  "components": [
+    {
+      "name": "Batter",
+      "ingredients": [
+        { "name": "All-Purpose Flour", "quantity": 2, "unit": "cup" },
+        { "name": "Baking Soda", "quantity": 1, "unit": "tsp" },
+        { "name": "Salt", "quantity": 0.5, "unit": "tsp" },
+        { "name": "Butter", "quantity": 0.5, "unit": "cup" },
+        { "name": "Brown Sugar", "quantity": 0.75, "unit": "cup" },
+        { "name": "Egg", "quantity": 2, "unit": "each" },
+        { "name": "Ripe Banana", "quantity": 3, "unit": "each" },
+        { "name": "Vanilla Extract", "quantity": 1, "unit": "tsp" },
+        { "name": "Walnuts", "quantity": 0.5, "unit": "cup" }
+      ]
+    }
+  ],
+  "prep_time": 15,
+  "cook_time": 60,
+  "servings": 8,
+  "instructions": [
+    "Mash bananas and mix with melted butter",
+    "Stir in sugar, egg, and vanilla",
+    "Fold in flour, baking soda, salt, and walnuts",
+    "Bake at 350F for 60 minutes"
+  ]
+}

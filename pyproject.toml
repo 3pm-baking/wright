@@ -12,6 +12,7 @@ dependencies = [
     "pint>=0.25",
     "pydantic>=2.8.2,<3.0.0",
     "pyyaml>=6.0.3",
+    "typer>=0.12",
 ]
 keywords = [
     "bill-of-materials",
@@ -49,6 +50,9 @@ Repository = "https://github.com/3pm-baking/wright"
 Issues = "https://github.com/3pm-baking/wright/issues"
 Documentation = "https://wright.germanbakingasheville.com"
 
+[project.scripts]
+wright-core = "wright_recipes.cli:main"
+
 [build-system]
 requires = ["hatchling>=1.21.0"]
 build-backend = "hatchling.build"
@@ -56,13 +60,16 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.sdist]
 include = [
     "src/wright/",
+    "src/wright_recipes/",
     "README.md",
     "LICENSE",
     "pyproject.toml",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/wright"]
+# One distribution, two packages: wright (pure library) + wright_recipes (CLI app layer).
+# wright must never import wright_recipes.
+packages = ["src/wright", "src/wright_recipes"]
 
 [tool.uv]
 package = true

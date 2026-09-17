@@ -97,3 +97,4 @@ Dive deeper into each area:
 - [Costing & Pricing](core/costing.md) — unit conversion, density data, margin calculation
 - [Matching & Planning](core/planning.md) — pickers, menu analysis, categorization
 - [Allergens & Nutrition](core/allergens-nutrition.md) — dietary badges, macros, nutrition callbacks
+- [Agents & Automation](agents.md) — turn any recipe web page into a shopping list with the `wright-core` CLI

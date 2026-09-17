@@ -161,6 +161,31 @@ class TestRecipe:
         assert r.servings is None
         assert r.instructions == []
 
+    def test_times_optional(self):
+        """Recipes without stated prep/cook times validate (web sources)."""
+        r = Recipe(name="Bread", components=[])
+        assert r.prep_time is None
+        assert r.cook_time is None
+
+    def test_repeated_model_validate_keeps_ingredients(self):
+        """Regression: pydantic 2.13 cached overridden-field schemas and
+        skipped the RecipeComponent validator on later calls, silently
+        dropping ingredients from the second validation onward."""
+        data = {
+            "name": "Cake",
+            "components": [
+                {
+                    "name": "Batter",
+                    "ingredients": [{"name": "Flour", "quantity": 2, "unit": "cup"}],
+                }
+            ],
+            "prep_time": 10,
+            "cook_time": 30,
+        }
+        for _ in range(3):
+            r = Recipe.model_validate(data)
+            assert [(m.name, m.quantity) for m in r.all_materials] == [("Flour", 2.0)]
+
     def test_servings_int(self):
         r = Recipe(name="Cake", components=[], prep_time=10, cook_time=30, servings=8)
         assert r.servings == 8
