@@ -94,8 +94,10 @@ def density_normalizer(quantity, unit, *, name=""):
         return grams, "g"
     return quantity, unit  # fall back to wright's default
 
+
 shopping = generate_shopping_list(
-    session, recipes,
+    session,
+    recipes,
     volume_normalizer=density_normalizer,
     on_incompatible="raise",
 )
