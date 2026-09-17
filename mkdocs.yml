@@ -35,6 +35,7 @@ nav:
       - Matching & Planning: guides/core/planning.md
       - Allergens & Nutrition: guides/core/allergens-nutrition.md
   - Guides:
+      - Agents & Automation: guides/agents.md
       - Meal Prep: guides/meal-prep.md
       - Food Service: guides/restaurant.md
       - Beyond Food: guides/domains.md

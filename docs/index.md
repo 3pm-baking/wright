@@ -125,6 +125,17 @@ stock = Stock([SupplyItem(name="Flour", quantity=2000, unit="g")])
 price = margin_price(Decimal("2.00"), 0.67)
 ```
 
+## Agents and automation
+
+Turn any recipe web page into a validated shopping list — an LLM extracts,
+wright plans deterministically:
+
+```bash
+uvx --with openai wright-core parse https://example.com/recipe | uvx wright-core shop
+```
+
+See the [Agents & Automation guide](guides/agents.md).
+
 ## Design
 
 - **No I/O.** Functions take data in, return data out.
