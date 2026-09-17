@@ -62,6 +62,48 @@ shopping = generate_shopping_list(session, recipes)
 # .all_items → list[SupplyItem] each with .name, .quantity, .unit, .tags
 ```
 
+### Unit consistency during accumulation
+
+When the same ingredient appears in different units across recipes
+(e.g. cups in one, grams in another), wright normalizes volume units to
+ml before summing.  Mixing *incompatible* units (ml + g) is refused
+rather than silently producing a meaningless total:
+
+```python
+from wright import generate_shopping_list, IncompatibleUnitsError
+
+try:
+    generate_shopping_list(session, recipes, on_incompatible="raise")
+except IncompatibleUnitsError as e:
+    print(e)  # names the ingredient and the two clashing units
+```
+
+- `on_incompatible="raise"` — raise `IncompatibleUnitsError` (recommended
+  when your caller can convert units itself)
+- `on_incompatible="add"` — default, legacy behavior of summing the raw
+  numbers (kept for backward compatibility; produces a meaningless total)
+
+The better fix is a **density-aware `volume_normalizer`**, which receives
+the ingredient name so it can convert volume → weight per ingredient:
+
+```python
+def density_normalizer(quantity, unit, *, name=""):
+    """Convert cups/tbsp/tsp to grams using per-ingredient density data."""
+    grams = my_density_lookup(name, quantity, unit)  # your data
+    if grams is not None:
+        return grams, "g"
+    return quantity, unit  # fall back to wright's default
+
+shopping = generate_shopping_list(
+    session, recipes,
+    volume_normalizer=density_normalizer,
+    on_incompatible="raise",
+)
+```
+
+Zero-quantity materials (e.g. `"to taste"` placeholders) are skipped
+during accumulation and never pollute the accumulator's unit.
+
 ## Enriching with costs
 
 ```python

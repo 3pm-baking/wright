@@ -141,6 +141,7 @@ description: Complete API reference for wright — models, costing, matching, pl
         - RecipeLoadError
         - PurchaseLoadError
         - UnitConversionError
+        - IncompatibleUnitsError
         - RecipeCostErrors
 
 ## `wright.units`
