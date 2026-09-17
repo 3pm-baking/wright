@@ -25,7 +25,12 @@ from .extract import (
 )
 from .fetch import FetchError, fetch_html, fetch_page, page_to_text
 from .jsonld import extract_jsonld_recipe, structured_block
-from .names import NAME_ALIASES, normalize_ingredient_name, variant_key
+from .names import (
+    NAME_ALIASES,
+    load_aliases,
+    normalize_ingredient_name,
+    variant_key,
+)
 from .providers import (
     DEFAULT_MODELS,
     ENV_VARS,
@@ -55,6 +60,7 @@ __all__ = [
     "structured_block",
     # name normalization
     "NAME_ALIASES",
+    "load_aliases",
     "normalize_ingredient_name",
     "variant_key",
     # providers

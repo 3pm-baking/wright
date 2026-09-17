@@ -93,11 +93,30 @@ wright-core shop - --format json < recipe.json     # machine-readable plan on st
 | `--batches` | Make every recipe this many times (`--batches 2` doubles it). Combines with `--servings`. |
 | `--units` | Display units: `us` (default, cups/tbsp) or `metric` (g/ml/kg). |
 | `--format` | `list` (default, human-readable on stderr), `json` or `yaml` (plan on stdout). |
+| `--aliases` | YAML or JSON file with extra ingredient-name mappings (variant -> canonical), merged over the built-in map. |
 
 Reads Recipe JSON/YAML from files or stdin (`-` or no argument). Multiple
 inputs are consolidated into one list — two recipes needing flour become
 one flour line. Stdin also accepts concatenated JSON objects (several
 `parse` runs joined) or a JSON array of recipes.
+
+Consolidation also merges ingredient-name variants ("Kosher salt" and
+"table salt" become one `Salt` line) using a built-in alias map. Bring
+your own mapping for ingredients wright does not know:
+
+```yaml
+# my-aliases.yaml — variant -> canonical
+"haricot verts": Green Beans
+"prawns": Shrimp
+```
+
+```bash
+wright-core shop a.yaml b.yaml --aliases my-aliases.yaml
+```
+
+Custom entries extend and override the built-in map. In Python, the
+same knobs are exposed: `normalize_ingredient_name(name, aliases)`,
+`variant_key(material, aliases)`, and `load_aliases(path)`.
 
 ### The seam is the point
 
