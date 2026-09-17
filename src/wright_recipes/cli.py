@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import date
+from functools import partial
 from pathlib import Path
 
 import typer
@@ -52,7 +53,7 @@ from . import fetch
 from .extract import ExtractionError, extract_recipe, recipe_to_json, recipe_to_yaml
 from .fetch import FetchError, fetch_html, page_to_text
 from .jsonld import extract_jsonld_recipe, structured_block
-from .names import variant_key
+from .names import load_aliases, variant_key
 from .providers import ProviderError, resolve_provider
 from .units_display import metric_display
 
@@ -166,6 +167,7 @@ def _build_plan(
     servings: int | None,
     units: str,
     batches: int = 1,
+    aliases: dict[str, str] | None = None,
 ):
     """Scale recipes and generate the consolidated shopping list."""
     scaled = []
@@ -180,7 +182,7 @@ def _build_plan(
     return generate_shopping_list(
         session,
         scaled,
-        key_fn=variant_key,
+        key_fn=partial(variant_key, aliases=aliases),
         display_normalizer=metric_display if units == "metric" else None,
     )
 
@@ -319,6 +321,14 @@ def shop(
         "--units",
         help="Display units: us (cups/tbsp) or metric (g/ml/kg).",
     ),
+    aliases: str | None = typer.Option(
+        None,
+        "--aliases",
+        help=(
+            "YAML or JSON file with extra ingredient-name mappings "
+            "(variant -> canonical), merged over the built-in map."
+        ),
+    ),
     output_format: str = typer.Option(
         "list",
         "--format",
@@ -337,7 +347,15 @@ def shop(
         _err("Error: no recipes provided.")
         raise typer.Exit(1)
 
-    shopping = _build_plan(recipes, servings, units, batches)
+    custom_aliases: dict[str, str] | None = None
+    if aliases:
+        try:
+            custom_aliases = load_aliases(aliases)
+        except (FileNotFoundError, ValueError) as exc:
+            _err(f"Error: {exc}")
+            raise typer.Exit(1) from exc
+
+    shopping = _build_plan(recipes, servings, units, batches, custom_aliases)
 
     if output_format == "list":
         _print_list(shopping)

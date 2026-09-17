@@ -507,6 +507,104 @@ def test_shop_keeps_brown_sugar_separate(tmp_path) -> None:
     assert len(sugar_lines) == 2  # Sugar and Brown sugar stay separate
 
 
+# ── custom aliases (bring your own mapping) ───────────────────────────
+
+
+def test_load_aliases_yaml(tmp_path) -> None:
+    from wright_recipes import load_aliases
+
+    f = tmp_path / "aliases.yaml"
+    f.write_text('"haricot verts": Green Beans\n"crema": Cream\n')
+    assert load_aliases(str(f)) == {"haricot verts": "Green Beans", "crema": "Cream"}
+
+
+def test_load_aliases_json(tmp_path) -> None:
+    from wright_recipes import load_aliases
+
+    f = tmp_path / "aliases.json"
+    f.write_text('{"haricot verts": "Green Beans"}')
+    assert load_aliases(str(f)) == {"haricot verts": "Green Beans"}
+
+
+def test_load_aliases_missing_file(tmp_path) -> None:
+    from wright_recipes import load_aliases
+
+    with pytest.raises(FileNotFoundError):
+        load_aliases(str(tmp_path / "nope.yaml"))
+
+
+def test_load_aliases_rejects_nested(tmp_path) -> None:
+    from wright_recipes import load_aliases
+
+    f = tmp_path / "bad.yaml"
+    f.write_text("salt:\n  - kosher\n  - table\n")
+    with pytest.raises(ValueError):
+        load_aliases(str(f))
+
+
+def test_normalize_with_custom_aliases() -> None:
+    from wright_recipes import normalize_ingredient_name
+
+    custom = {"haricot verts": "Green Beans"}
+    assert normalize_ingredient_name("Haricot Verts", custom) == "Green Beans"
+    # built-in map still active
+    assert normalize_ingredient_name("Kosher salt") == "Salt"
+    # custom overrides built-in
+    custom2 = {"kosher salt": "Fancy Salt"}
+    assert normalize_ingredient_name("Kosher salt", custom2) == "Fancy Salt"
+
+
+def test_shop_custom_aliases_file(tmp_path) -> None:
+    alias_file = tmp_path / "aliases.yaml"
+    alias_file.write_text('"haricot verts": Green Beans\n')
+    a = tmp_path / "a.json"
+    a.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish A",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [
+                        {"name": "Haricot verts", "quantity": 200, "unit": "g"}
+                    ],
+                }
+            ],
+        })
+    )
+    b = tmp_path / "b.json"
+    b.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish B",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [
+                        {"name": "Green Beans", "quantity": 100, "unit": "g"}
+                    ],
+                }
+            ],
+        })
+    )
+    result = CliRunner().invoke(
+        app, ["shop", str(a), str(b), "--aliases", str(alias_file)]
+    )
+    assert result.exit_code == 0, result.output
+    bean_lines = [ln for ln in result.stderr.splitlines() if "Bean" in ln]
+    assert len(bean_lines) == 1
+    assert "300" in bean_lines[0]
+
+
+def test_shop_missing_aliases_file_exits_nonzero(tmp_path) -> None:
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))
+    result = CliRunner().invoke(
+        app, ["shop", str(recipe_file), "--aliases", str(tmp_path / "nope.yaml")]
+    )
+    assert result.exit_code == 1
+
+
 # ── CLI ───────────────────────────────────────────────────────────────
 
 
