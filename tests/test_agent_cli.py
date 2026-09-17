@@ -404,6 +404,109 @@ def test_check_finish_reason_stop_ok() -> None:
     _check_finish_reason(None)  # no raise
 
 
+# ── name normalization ────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Kosher salt", "Salt"),
+        ("table salt", "Salt"),
+        ("coarse sea salt", "Salt"),
+        ("King Arthur Unbleached All-Purpose Flour", "All-Purpose Flour"),
+        ("granulated sugar", "Sugar"),
+        ("extra-virgin olive oil", "Olive Oil"),
+        ("Brown sugar", "Brown sugar"),  # not merged
+        ("Flour", "Flour"),  # unmatched passes through
+    ],
+)
+def test_normalize_ingredient_name(raw: str, expected: str) -> None:
+    from wright_recipes import normalize_ingredient_name
+
+    assert normalize_ingredient_name(raw) == expected
+
+
+def test_shop_merges_salt_variants(tmp_path) -> None:
+    """Two salt variants from different sites become one line."""
+    a = tmp_path / "a.json"
+    a.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish A",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [
+                        {"name": "Kosher salt", "quantity": 1, "unit": "tsp"},
+                        {"name": "Flour", "quantity": 2, "unit": "cup"},
+                    ],
+                }
+            ],
+        })
+    )
+    b = tmp_path / "b.json"
+    b.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish B",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [
+                        {"name": "Table salt", "quantity": 1, "unit": "tsp"},
+                        {"name": "Flour", "quantity": 1, "unit": "cup"},
+                    ],
+                }
+            ],
+        })
+    )
+    result = CliRunner().invoke(app, ["shop", str(a), str(b)])
+    assert result.exit_code == 0, result.output
+    salt_lines = [ln for ln in result.stderr.splitlines() if "salt" in ln.lower()]
+    assert len(salt_lines) == 1
+    assert "Salt" in salt_lines[0]
+    # 1 tsp + 1 tsp = 2 tsp
+    assert "2" in salt_lines[0]
+    # Flour merged too (3 cups = 24 floz)
+    flour_lines = [ln for ln in result.stderr.splitlines() if "Flour" in ln]
+    assert len(flour_lines) == 1
+
+
+def test_shop_keeps_brown_sugar_separate(tmp_path) -> None:
+    a = tmp_path / "a.json"
+    a.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish A",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [{"name": "Sugar", "quantity": 1, "unit": "cup"}],
+                }
+            ],
+        })
+    )
+    b = tmp_path / "b.json"
+    b.write_text(
+        json.dumps({
+            **VALID_RECIPE,
+            "name": "Dish B",
+            "components": [
+                {
+                    "name": "Main",
+                    "ingredients": [
+                        {"name": "Brown sugar", "quantity": 1, "unit": "cup"}
+                    ],
+                }
+            ],
+        })
+    )
+    result = CliRunner().invoke(app, ["shop", str(a), str(b)])
+    assert result.exit_code == 0, result.output
+    sugar_lines = [ln for ln in result.stderr.splitlines() if "ugar" in ln]
+    assert len(sugar_lines) == 2  # Sugar and Brown sugar stay separate
+
+
 # ── CLI ───────────────────────────────────────────────────────────────
 
 

@@ -123,11 +123,12 @@ def extract_recipe(
     *extra_context* is appended to the prompt as caller instructions.
     """
     prompt = build_prompt(page_text, structured, extra_context)
-    if hasattr(provider, "complete_parsed"):
+    complete_parsed = getattr(provider, "complete_parsed", None)
+    if complete_parsed is not None:
         # Native structured output: the client validates against the
         # schema server-side.  One retry on failure, same as manual.
         try:
-            parsed = provider.complete_parsed(prompt, Recipe)
+            parsed = complete_parsed(prompt, Recipe)
             return (
                 parsed
                 if isinstance(parsed, Recipe)

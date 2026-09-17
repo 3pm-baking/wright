@@ -341,12 +341,13 @@ class Assembly(BaseModel):
         if isinstance(data, dict):
             comps = data.get("components")
             if isinstance(comps, list):
-                data["components"] = [
-                    {**c, "materials": c.pop("ingredients")}
-                    if isinstance(c, dict) and "ingredients" in c
-                    else c
-                    for c in comps
-                ]
+                mapped: list[object] = []
+                for c in comps:
+                    if isinstance(c, dict) and "ingredients" in c:
+                        c = dict(c)
+                        c["materials"] = c.pop("ingredients")
+                    mapped.append(c)
+                data["components"] = mapped  # ty: ignore[invalid-assignment]
         return data
 
     def __repr__(self) -> str:

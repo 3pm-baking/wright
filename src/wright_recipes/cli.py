@@ -43,6 +43,7 @@ from wright import (
     ProductionItem,
     ProductionRun,
     Recipe,
+    ServingRange,
     generate_shopping_list,
     group_shopping_items,
 )
@@ -51,6 +52,7 @@ from . import fetch
 from .extract import ExtractionError, extract_recipe, recipe_to_json, recipe_to_yaml
 from .fetch import FetchError, fetch_html, page_to_text
 from .jsonld import extract_jsonld_recipe, structured_block
+from .names import variant_key
 from .providers import ProviderError, resolve_provider
 from .units_display import metric_display
 
@@ -152,8 +154,8 @@ def _scale_factor(recipe: Recipe, servings: int | None) -> float:
         _err(f"Warning: recipe has no serving count; ignoring --servings ({servings}).")
         return 1.0
     base = (
-        recipe_servings.midpoint
-        if hasattr(recipe_servings, "midpoint")
+        float(recipe_servings.midpoint)
+        if isinstance(recipe_servings, ServingRange)
         else float(recipe_servings)
     )
     return servings / base if base > 0 else 1.0
@@ -178,6 +180,7 @@ def _build_plan(
     return generate_shopping_list(
         session,
         scaled,
+        key_fn=variant_key,
         display_normalizer=metric_display if units == "metric" else None,
     )
 
