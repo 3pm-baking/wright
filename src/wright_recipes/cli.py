@@ -8,7 +8,8 @@ Three commands, composable with pipes:
              Pure transformation: recipe in, scaled recipe out.
     shop   — turn one or more Recipes into a consolidated shopping list
              (deterministic).  Reads files or stdin; human-readable list
-             on stderr, machine-readable plan on stdout.
+             on stderr, machine-readable plan on stdout.  Scaling flags
+             are deprecated — scale before shopping.
 
 The seam between parse and shop is deliberate: extraction is
 probabilistic, planning is deterministic, and the boundary is where
@@ -316,12 +317,18 @@ def shop(
     servings: int | None = typer.Option(
         None,
         "--servings",
-        help="Scale every recipe to this many servings.",
+        help=(
+            "Deprecated: scale every recipe to this many servings. "
+            "Use 'wright-core scale' before shop instead."
+        ),
     ),
     batches: int = typer.Option(
         1,
         "--batches",
-        help="Make every recipe this many times (e.g. --batches 2 doubles it).",
+        help=(
+            "Deprecated: make every recipe this many times. "
+            "Use 'wright-core scale --batches' before shop instead."
+        ),
     ),
     units: str = typer.Option(
         "us",
@@ -353,6 +360,18 @@ def shop(
     if not recipes:
         _err("Error: no recipes provided.")
         raise typer.Exit(1)
+
+    if servings is not None:
+        _err(
+            "Deprecated: shop --servings will be removed in a future "
+            "release. Scale before shopping: "
+            "'wright-core scale recipe.json --servings N | wright-core shop'."
+        )
+    if batches != 1:
+        _err(
+            "Deprecated: shop --batches. Scale before shopping: "
+            "'wright-core scale recipe.json --batches N | wright-core shop'."
+        )
 
     custom_aliases: dict[str, str] | None = None
     if aliases:
