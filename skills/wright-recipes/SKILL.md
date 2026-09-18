@@ -132,7 +132,8 @@ Or in Python:
 
 ```python
 from wright import Recipe, generate_shopping_list, ProductionRun, ProductionItem
-recipe = Recipe.model_validate(data)   # raises with the exact bad field
+
+recipe = Recipe.model_validate(data)  # raises with the exact bad field
 ```
 
 Validation is built in: pipe your JSON through `wright-core shop` (exit
@@ -163,19 +164,31 @@ no I/O in the core. Use a PEP 723 script:
 # ///
 from decimal import Decimal
 from wright import (
-    Recipe, RecipeComponent, Ingredient,
-    ProductionRun, ProductionItem,
-    generate_shopping_list, calculate_shopping_list_cost,
-    Purchase, detect_dietary_properties, margin_price,
+    Recipe,
+    RecipeComponent,
+    Ingredient,
+    ProductionRun,
+    ProductionItem,
+    generate_shopping_list,
+    calculate_shopping_list_cost,
+    Purchase,
+    detect_dietary_properties,
+    margin_price,
 )
 
 cake = Recipe(
     name="Cake",
-    components=[RecipeComponent(name="Batter", ingredients=[
-        Ingredient(name="Flour", quantity=300, unit="g"),
-        Ingredient(name="Butter", quantity=150, unit="g"),
-    ])],
-    prep_time=20, cook_time=40,
+    components=[
+        RecipeComponent(
+            name="Batter",
+            ingredients=[
+                Ingredient(name="Flour", quantity=300, unit="g"),
+                Ingredient(name="Butter", quantity=150, unit="g"),
+            ],
+        )
+    ],
+    prep_time=20,
+    cook_time=40,
 )
 
 run = ProductionRun(
@@ -190,8 +203,8 @@ purchases = [Purchase(name="Flour", quantity=5000, unit="g", price=Decimal("4.49
 costs = calculate_shopping_list_cost(shopping, purchases)
 
 # Allergens and pricing
-print(detect_dietary_properties(cake))          # ["Gluten", "Dairy", "Eggs"]
-print(margin_price(Decimal("2.00"), 0.67))      # price at 67% margin
+print(detect_dietary_properties(cake))  # ["Gluten", "Dairy", "Eggs"]
+print(margin_price(Decimal("2.00"), 0.67))  # price at 67% margin
 ```
 
 Capability map (all importable from `wright`):
@@ -220,6 +233,7 @@ REPL with wright available.
 | "The 'openai' package is not installed" | SDK missing | Run with `uvx --with openai` (or `--with anthropic`) |
 | "No API key found" | No key in env or `--key` | Set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` |
 | Same ingredient on multiple lines | Sites name it differently | `--aliases FILE` with variant → canonical mappings |
+| Fractional discrete quantities ("Egg 0.57 each") | Scaling below the recipe's native yield | Mathematically correct — interpret as "buy at least one." Prefer `--batches` (whole-recipe multiples) when a recipe does not halve cleanly |
 | Model output fails validation | Prose page, complex quantities | Built-in retry usually handles it; check JSON-LD pages for best results |
 
 Pages with schema.org JSON-LD (`Recipe` structured data) extract

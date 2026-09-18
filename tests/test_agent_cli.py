@@ -605,6 +605,32 @@ def test_shop_missing_aliases_file_exits_nonzero(tmp_path) -> None:
     assert result.exit_code == 1
 
 
+def test_downscale_warns_on_stderr(tmp_path) -> None:
+    """Scaling below native yield warns; discrete items can't go below 1."""
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))  # serves 8
+    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "2"])
+    assert result.exit_code == 0, result.output
+    assert "scaling below the recipe's native yield" in result.stderr
+    assert "at least one" in result.stderr
+
+
+def test_upscale_does_not_warn(tmp_path) -> None:
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))  # serves 8
+    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "16"])
+    assert result.exit_code == 0, result.output
+    assert "native yield" not in result.stderr
+
+
+def test_scale_downscale_warns() -> None:
+    result = CliRunner().invoke(
+        app, ["scale", "--servings", "2"], input=json.dumps(VALID_RECIPE)
+    )
+    assert result.exit_code == 0, result.output
+    assert "scaling below the recipe's native yield" in result.stderr
+
+
 # ── CLI ───────────────────────────────────────────────────────────────
 
 
