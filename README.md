@@ -54,7 +54,7 @@ uvx --with openai wright-core parse https://example.com/recipe | uvx wright-core
 
 # Or in two steps, with review in between
 uvx --with openai wright-core parse https://example.com/recipe > recipe.yaml
-uvx wright-core shop recipe.yaml --servings 12 --units metric
+uvx wright-core scale recipe.yaml --servings 12 | uvx wright-core shop --units metric
 
 # Per-recipe scaling, then consolidation
 uvx --with openai wright-core parse URL_A | uvx wright-core scale --servings 24 > a.json
