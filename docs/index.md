@@ -5,6 +5,14 @@ description: Multi-domain Python library for bill-of-materials planning, recipe 
 
 > **wright** /rīt/ — *noun*: a maker or builder. From Old English *wyrhta* (worker), as in *shipwright*, *wheelwright*, *playwright*. Here: a wright for your recipes, assemblies, and bills of materials.
 
+!!! tip "Using an AI agent?"
+
+    Wright ships installable agent skills: `wright-recipes` (any food & recipe task) and `weekly-meal-plan` (a week of recipes → one consolidated grocery list):
+
+    ```bash
+    npx skills add 3pm-baking/wright
+    ```
+
 <p align="center">
   <a href="https://wright.germanbakingasheville.com">
     <img src="assets/wright-logo.png" width="225" alt="wright">
@@ -14,7 +22,7 @@ description: Multi-domain Python library for bill-of-materials planning, recipe 
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.
 
-Data-source agnostic. No I/O inside the core — models are plain Pydantic, the
+Data-source agnostic. No I/O inside the core: models are plain Pydantic, the
 `PurchasedItem` protocol accepts anything. Subclass to add your own fields.
 
 ```bash
@@ -45,7 +53,7 @@ cake = Recipe(
 double = cake * 2  # scale a recipe with *
 ```
 
-## Beyond food — Material and Component
+## Beyond food: Material and Component
 
 `Material` and `Component` are the domain-agnostic base classes behind
 `Ingredient` and `RecipeComponent`.  Use them directly for non-food domains:
@@ -110,7 +118,7 @@ shopping = generate_shopping_list(session, [cake])
 ```
 
 [Full grocery list example](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py)
-— grouped by store aisle with costs.
+, grouped by store aisle with costs.
 
 ## Allergens, nutrition, supply, pricing
 
@@ -127,7 +135,7 @@ price = margin_price(Decimal("2.00"), 0.67)
 
 ## Agents and automation
 
-Turn any recipe web page into a validated shopping list — an LLM extracts,
+Turn any recipe web page into a validated shopping list. An LLM extracts,
 wright plans deterministically:
 
 ```bash
@@ -144,7 +152,7 @@ See the [Agents & Automation guide](guides/agents.md).
 - **Subclass-friendly.** `Material` / `Ingredient` inheritance chain lets you
   add domain fields (construction grades, food vendor info) without monkey-patching.
 - **Multi-domain.** Same pipeline for cookies, decks, beer recipes, or assembly
-  lines — just swap the model subclass and category rules.
+  lines; just swap the model subclass and category rules.
 
 ## Requirements
 
