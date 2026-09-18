@@ -43,7 +43,7 @@ uvx --with openai wright-core parse URL | uvx wright-core shop --format json
 |---|---|---|
 | `parse <url>` | extraction (LLM) | `--provider openai\|anthropic\|gemini`, `--key`, `--model`, `--context`, `--format json\|yaml` |
 | `scale` | per-recipe transform | `--servings N`, `--batches N`; recipe in, scaled recipe out |
-| `shop` | planning (deterministic) | files or stdin; `--servings`, `--batches`, `--units us\|metric`, `--format list\|json\|yaml`, `--aliases FILE` |
+| `shop` | planning (deterministic) | files or stdin; `--units us\|metric`, `--format list\|json\|yaml`, `--aliases FILE`. Scaling flags are deprecated — use `scale` before `shop` |
 
 Conventions: machine-readable output (JSON, YAML) on stdout; human
 output and diagnostics on stderr; exit codes 0 (success), 1 (failure),
@@ -233,7 +233,7 @@ REPL with wright available.
 | "The 'openai' package is not installed" | SDK missing | Run with `uvx --with openai` (or `--with anthropic`) |
 | "No API key found" | No key in env or `--key` | Set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` |
 | Same ingredient on multiple lines | Sites name it differently | `--aliases FILE` with variant → canonical mappings |
-| Fractional discrete quantities ("Egg 0.57 each", "0.5 can") | Scaling below the recipe's native yield | Exact scaled math, not a rounding error. Interpret in context: some items split fine (half a can), others do not (a fraction of an egg means "at least one"). Prefer `--batches` (whole-recipe multiples) when a recipe does not halve cleanly |
+| Fractional discrete quantities ("Egg 0.57 each", "0.5 can") | Scaling below the recipe's native yield | Exact scaled math, not a rounding error. Interpret in context: some items split fine (half a can), others do not (a fraction of an egg means "at least one"). Prefer `scale --batches` (whole-recipe multiples) when a recipe does not halve cleanly |
 | Model output fails validation | Prose page, complex quantities | Built-in retry usually handles it; check JSON-LD pages for best results |
 
 Pages with schema.org JSON-LD (`Recipe` structured data) extract

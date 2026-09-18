@@ -605,6 +605,34 @@ def test_shop_missing_aliases_file_exits_nonzero(tmp_path) -> None:
     assert result.exit_code == 1
 
 
+def test_shop_servings_deprecation_warns(tmp_path) -> None:
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))
+    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "12"])
+    assert result.exit_code == 0, result.output
+    assert "Deprecated: shop --servings" in result.stderr
+    assert "wright-core scale" in result.stderr
+    # still functions: 2 cups at 8 servings -> 3 cups = 24 floz
+    assert "24 floz" in result.stderr or "quart" in result.stderr
+
+
+def test_shop_batches_deprecation_warns(tmp_path) -> None:
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))
+    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--batches", "2"])
+    assert result.exit_code == 0, result.output
+    assert "Deprecated: shop --batches" in result.stderr
+    assert "wright-core scale recipe.json --batches" in result.stderr
+
+
+def test_shop_no_deprecation_warning_without_scaling(tmp_path) -> None:
+    recipe_file = tmp_path / "r.json"
+    recipe_file.write_text(json.dumps(VALID_RECIPE))
+    result = CliRunner().invoke(app, ["shop", str(recipe_file)])
+    assert result.exit_code == 0, result.output
+    assert "Deprecated" not in result.stderr
+
+
 def test_downscale_warns_on_stderr(tmp_path) -> None:
     """Scaling below native yield warns; quantities stay exact math."""
     recipe_file = tmp_path / "r.json"

@@ -99,7 +99,7 @@ Show the user:
 | "No API key found" | Set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`, or pass `--key` |
 | "The 'openai' package is not installed" | Run with `uvx --with openai` |
 | Same ingredient on multiple lines | `--aliases FILE` with variant → canonical mappings |
-| User wants different servings per day | `scale` each recipe individually before `shop` (uniform `shop --servings` applies to everything) |
+| User wants different servings per day | `scale` each recipe individually before `shop` — all scaling happens in `scale` (`shop --servings` is deprecated) |
 
 ## Going further
 
