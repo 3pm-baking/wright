@@ -233,7 +233,7 @@ REPL with wright available.
 | "The 'openai' package is not installed" | SDK missing | Run with `uvx --with openai` (or `--with anthropic`) |
 | "No API key found" | No key in env or `--key` | Set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` |
 | Same ingredient on multiple lines | Sites name it differently | `--aliases FILE` with variant → canonical mappings |
-| Fractional discrete quantities ("Egg 0.57 each") | Scaling below the recipe's native yield | Mathematically correct — interpret as "buy at least one." Prefer `--batches` (whole-recipe multiples) when a recipe does not halve cleanly |
+| Fractional discrete quantities ("Egg 0.57 each", "0.5 can") | Scaling below the recipe's native yield | Exact scaled math, not a rounding error. Interpret in context: some items split fine (half a can), others do not (a fraction of an egg means "at least one"). Prefer `--batches` (whole-recipe multiples) when a recipe does not halve cleanly |
 | Model output fails validation | Prose page, complex quantities | Built-in retry usually handles it; check JSON-LD pages for best results |
 
 Pages with schema.org JSON-LD (`Recipe` structured data) extract
