@@ -100,6 +100,12 @@ inputs are consolidated into one list — two recipes needing flour become
 one flour line. Stdin also accepts concatenated JSON objects (several
 `parse` runs joined) or a JSON array of recipes.
 
+Scaling below a recipe's native yield produces exact fractional math —
+discrete items like eggs or cans cannot go below 1, so "0.57 each"
+means "at least one." The CLI notes this on stderr when it happens.
+Prefer `--batches` (whole-recipe multiples) over fractional serving
+scaling when a recipe does not halve cleanly.
+
 Consolidation also merges ingredient-name variants ("Kosher salt" and
 "table salt" become one `Salt` line) using a built-in alias map. Bring
 your own mapping for ingredients wright does not know:
