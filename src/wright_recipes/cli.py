@@ -162,8 +162,9 @@ def _scale_factor(recipe: Recipe, servings: int | None) -> float:
     if base > 0 and servings < base:
         _err(
             f"Note: scaling below the recipe's native yield "
-            f"({base:g} -> {servings} servings). Discrete items (eggs, cans, "
-            "cloves) cannot go below 1 — fractional counts mean 'at least one'."
+            f"({base:g} -> {servings} servings). Quantities are exact scaled "
+            "math — some items split fine (half a can), others do not "
+            "(a fraction of an egg means 'at least one')."
         )
     return servings / base if base > 0 else 1.0
 

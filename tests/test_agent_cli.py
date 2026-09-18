@@ -606,13 +606,13 @@ def test_shop_missing_aliases_file_exits_nonzero(tmp_path) -> None:
 
 
 def test_downscale_warns_on_stderr(tmp_path) -> None:
-    """Scaling below native yield warns; discrete items can't go below 1."""
+    """Scaling below native yield warns; quantities stay exact math."""
     recipe_file = tmp_path / "r.json"
     recipe_file.write_text(json.dumps(VALID_RECIPE))  # serves 8
     result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "2"])
     assert result.exit_code == 0, result.output
     assert "scaling below the recipe's native yield" in result.stderr
-    assert "at least one" in result.stderr
+    assert "exact scaled" in result.stderr
 
 
 def test_upscale_does_not_warn(tmp_path) -> None:

@@ -55,11 +55,11 @@ uvx wright-core scale sat.json --servings 24 > sat-x24.json
 ```
 
 When a recipe yields more than you need, prefer whole-batch strategies
-(`--batches 1` with planned leftovers) over fractional downscaling —
-discrete items (eggs, cans, cloves) cannot go below 1, so scaling 8
-servings down to 2 produces values like "0.57 each" (the CLI notes
-this on stderr). Leftovers are usually the honest answer for 2-person
-households.
+(`--batches 1` with planned leftovers) over fractional downscaling.
+Downscaled quantities are exact math — some items split fine (half a
+can), others do not (a fraction of an egg means "at least one"); the
+CLI notes this on stderr. Leftovers are usually the honest answer for
+2-person households.
 
 ### 3. Consolidate into one shopping list
 
