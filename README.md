@@ -27,6 +27,21 @@ quantities and units into a consolidated supply list with costs.
 pip install wright-core
 ```
 
+## Use it with your AI agent
+
+Wright ships two installable agent skills — install them for Claude Code,
+Codex, Cursor, OpenCode, and dozens of other agents:
+
+```bash
+npx skills add 3pm-baking/wright
+```
+
+- **`wright-recipes`** — any food & recipe task: parse recipe web pages,
+  scale servings, build shopping lists, cost recipes, detect allergens,
+  analyze nutrition
+- **`weekly-meal-plan`** — turn a week of recipes into one consolidated
+  grocery list
+
 ## From recipe web page to shopping list
 
 The distribution ships a chainable CLI: an LLM extracts a validated recipe

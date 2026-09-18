@@ -26,6 +26,12 @@ $EDITOR recipe.yaml            # tweak names, drop items, fix quantities
 uvx wright-core shop recipe.yaml --servings 12 --units metric
 ```
 
+Prefer your agent to do it? Install the skills (`wright-recipes` for any food & recipe task, `weekly-meal-plan` for a week of recipes → one consolidated list):
+
+```bash
+npx skills add 3pm-baking/wright
+```
+
 Real output from a live run (German Nussecken, extracted from platedcravings.com):
 
 ```
