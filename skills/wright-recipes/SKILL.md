@@ -64,6 +64,81 @@ your own mapping:
 wright-core shop a.yaml b.yaml --aliases my-aliases.yaml
 ```
 
+## No CLI needed — speak the schema
+
+The `parse` command is just one way to produce a Recipe. **The schema
+is the contract**: any agent that can emit conforming Recipe JSON gets
+the entire deterministic pipeline (scaling, consolidation, unit
+normalization) without an LLM call, an SDK, or an API key.
+
+### The Recipe schema
+
+```json
+{
+  "name": "Classic Banana Bread",
+  "components": [
+    {
+      "name": "Batter",
+      "ingredients": [
+        {"name": "All-Purpose Flour", "quantity": 2, "unit": "cup"},
+        {"name": "Egg", "quantity": 2, "unit": "each"}
+      ]
+    }
+  ],
+  "prep_time": 15,
+  "cook_time": 60,
+  "servings": 8,
+  "instructions": ["..."]
+}
+```
+
+Extraction rules that make it work:
+
+- Quantities are numbers, never strings ("2 1/2" → 2.5).
+- Keep units exactly as written (cup, tbsp, tsp, each, g, ml, quart) —
+  never convert; the library handles units.
+- Clean, generic names: "sugar for boiling" is just "Sugar"; merge
+  variety qualifiers ("vinegar" + "white vinegar" → "White vinegar").
+- One component per logical section (batter, topping); a single-section
+  recipe uses one component named "Main".
+- Vague seasonings get assumed units, never null: "a pinch of nutmeg" →
+  quantity 1, unit "pinch"; "salt to taste" → 1 tsp.
+- Omit optional garnishes and "plus more for serving".
+- Omit `prep_time`/`cook_time` (null) when the source does not state them.
+
+Advanced fields (optional): `equivalent_quantity`/`equivalent_unit` for
+packet-style items ("1 packet yeast = 7 g"), `require_tags` for variants
+(e.g. `["unsalted"]` on butter). See the
+[models docs](https://wright.germanbakingasheville.com/guides/core/models/).
+
+### Paths that skip the LLM entirely
+
+- **Page has JSON-LD?** Transform `schema.org/Recipe` fields directly —
+  `recipeIngredient` lines → components/ingredients. Deterministic, no
+  model call.
+- **Already fetched the HTML?** Extract per the rules above and emit the
+  JSON yourself.
+- **User pasted the recipe as text?** Structure it per the schema.
+
+Then feed it to the deterministic stage:
+
+```bash
+wright-core shop recipe.json                      # grouped list
+wright-core shop recipe.json --servings 12        # scaled
+echo '<recipe-json>' | wright-core shop           # via stdin
+```
+
+Or in Python:
+
+```python
+from wright import Recipe, generate_shopping_list, ProductionRun, ProductionItem
+recipe = Recipe.model_validate(data)   # raises with the exact bad field
+```
+
+Validation is built in: pipe your JSON through `wright-core shop` (exit
+0 = valid) or `Recipe.model_validate` — pydantic errors name the exact
+field and what it expected.
+
 ## Missing inputs protocol
 
 This skill does not search for recipes. If the user names a dish but
