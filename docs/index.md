@@ -5,6 +5,12 @@ description: Multi-domain Python library for bill-of-materials planning, recipe 
 
 > **wright** /rīt/ — *noun*: a maker or builder. From Old English *wyrhta* (worker), as in *shipwright*, *wheelwright*, *playwright*. Here: a wright for your recipes, assemblies, and bills of materials.
 
+<p align="center">
+  <a href="https://wright.germanbakingasheville.com">
+    <img src="assets/wright-logo.png" width="225" alt="wright">
+  </a>
+</p>
+
 !!! tip "Using an AI agent?"
 
     Wright ships installable agent skills: `wright-recipes` (any food & recipe task) and `weekly-meal-plan` (a week of recipes → one consolidated grocery list):
@@ -12,12 +18,6 @@ description: Multi-domain Python library for bill-of-materials planning, recipe 
     ```bash
     npx skills add 3pm-baking/wright
     ```
-
-<p align="center">
-  <a href="https://wright.germanbakingasheville.com">
-    <img src="assets/wright-logo.png" width="225" alt="wright">
-  </a>
-</p>
 
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.

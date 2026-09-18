@@ -265,7 +265,7 @@ The first call extracts a validated recipe from the page; the second turns it in
 
 ### Can an LLM parse recipe ingredients reliably?
 
-Not on its own — quantities get misattributed, fractions get mangled, and there is no way to test prose output. Wright's answer is to constrain the LLM to a pydantic schema, validate the result, retry once on failure, and then hand everything after that to deterministic code. Extraction quality still varies by page (pages with schema.org JSON-LD are markedly better), but the planning stage is exact.
+Not on its own: quantities get misattributed, fractions get mangled, and there is no way to test prose output. Wright's answer is to constrain the LLM to a pydantic schema, validate the result, retry once on failure, and then hand everything after that to deterministic code. Extraction quality still varies by page (pages with schema.org JSON-LD are markedly better), but the planning stage is exact.
 
 ### Does this work with schema.org recipe data?
 
@@ -277,7 +277,7 @@ OpenAI, Anthropic, and Gemini (via its OpenAI-compatible endpoint). You bring yo
 
 ### How do I double a recipe or scale it to more servings?
 
-Use `scale` before shopping: `scale --servings N` rescales the recipe to a serving count (a recipe serving 8, scaled to 16, doubles every quantity); `scale --batches N` makes the recipe N times as a unit of production ("cook it twice"). They combine: `scale --servings 16 --batches 2` is "the 16-serving version, made twice". `shop --servings/--batches` still work but are deprecated — scaling belongs to `scale`, consolidation to `shop`.
+Use `scale` before shopping: `scale --servings N` rescales the recipe to a serving count (a recipe serving 8, scaled to 16, doubles every quantity); `scale --batches N` makes the recipe N times as a unit of production ("cook it twice"). They combine: `scale --servings 16 --batches 2` is "the 16-serving version, made twice". `shop --servings/--batches` still work but are deprecated: scaling belongs to `scale`, consolidation to `shop`.
 
 ### Can I use this from an agent?
 
