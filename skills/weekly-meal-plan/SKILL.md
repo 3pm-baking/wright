@@ -15,7 +15,9 @@ consolidated grocery list. Uses the `wright-core` CLI (see the
 
 ## Inputs needed
 
-- One or more recipe URLs (or already-extracted recipe JSON/YAML files)
+- One or more recipes — as URLs, as JSON/YAML files, or as text the
+  agent structures per the Recipe schema (see the `wright-recipes`
+  skill; the schema is the contract, the CLI's `parse` is optional)
 - Optional: which day each recipe is for, servings per day, batches
 
 ## Missing inputs protocol
