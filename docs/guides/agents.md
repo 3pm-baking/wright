@@ -4,13 +4,21 @@ description: Turn any recipe web page into a validated shopping list with an AI 
 
 # Recipe to Shopping List: Automated Grocery Lists with AI Agents
 
+!!! tip "Prefer your agent to do it?"
+
+    Install the skills, `wright-recipes` (any food & recipe task) and `weekly-meal-plan` (a week of recipes → one consolidated list), and your agent handles the whole pipeline:
+
+    ```bash
+    npx skills add 3pm-baking/wright
+    ```
+
 Automated grocery list generation is one of the most natural agent workflows for wright: point the CLI at any recipe web page, and get back a validated, unit-normalized shopping list.
 
 The key design idea: **the LLM is just another data source.** Wright is a pure library with no LLM dependency. The agent produces a structured `Recipe`, and everything downstream (validation, unit conversion, aggregation, grouping) is deterministic library code.
 
 And the pipeline is deliberately split in two:
 
-> **Extraction is probabilistic; planning is deterministic. Wright makes the boundary explicit** — so you (or an agent) can review, tweak, or transform the recipe between the two steps.
+> **Extraction is probabilistic; planning is deterministic. Wright makes the boundary explicit**, so you (or an agent) can review, tweak, or transform the recipe between the two steps.
 
 ## Quick start
 
@@ -55,7 +63,7 @@ Real output from a live run (German Nussecken, extracted from platedcravings.com
 
 ## The three commands
 
-### `parse` — extraction (probabilistic)
+### `parse`: extraction (probabilistic)
 
 ```bash
 uvx --with openai wright-core parse https://example.com/recipe            # Recipe JSON on stdout
@@ -70,7 +78,7 @@ uvx --with openai wright-core parse URL --format yaml                     # or Y
 | `--context` | Extra instructions appended to the prompt (dietary preferences, substitutions). |
 | `--user-agent` | Override the fetch User-Agent if a site blocks the default. |
 
-### `scale` — per-recipe transformation (deterministic, no LLM, no network)
+### `scale`: per-recipe transformation (deterministic, no LLM, no network)
 
 ```bash
 wright-core scale recipe.yaml --servings 24        # rescale to 24 servings
@@ -79,10 +87,9 @@ wright-core scale recipe.yaml --servings 16 --batches 2  # both combine
 ```
 
 A pure stream transformation: one recipe in, scaled recipe out (JSON by
-default, `--format yaml` available). All scaling — per-recipe or
-uniform — happens here, before `shop`.
+default, `--format yaml` available). All scaling, per-recipe or uniform, happens here, before `shop`.
 
-### `shop` — planning (deterministic, no LLM, no network)
+### `shop`: planning (deterministic, no LLM, no network)
 
 ```bash
 wright-core shop recipe.yaml                       # grouped list on stderr
@@ -101,11 +108,11 @@ wright-core shop - --format json < recipe.json     # machine-readable plan on st
 | `--aliases` | YAML or JSON file with extra ingredient-name mappings (variant -> canonical), merged over the built-in map. |
 
 Reads Recipe JSON/YAML from files or stdin (`-` or no argument). Multiple
-inputs are consolidated into one list — two recipes needing flour become
+inputs are consolidated into one list; two recipes needing flour become
 one flour line. Stdin also accepts concatenated JSON objects (several
 `parse` runs joined) or a JSON array of recipes.
 
-Scaling below a recipe's native yield produces exact fractional math —
+Scaling below a recipe's native yield produces exact fractional math.
 "0.5 can" or "0.57 each" is correct scaled math, not a rounding error.
 Interpret in context: some items split fine (half a can), others do
 not (a fraction of an egg means "at least one"). The CLI notes this on
@@ -149,7 +156,7 @@ Output streams follow the standard convention: machine-readable output (JSON, YA
 
 ## Structured data (JSON-LD) when available
 
-Most recipe sites embed a schema.org `Recipe` object as JSON-LD — clean, machine-readable ingredient lines. When `parse` finds one, it includes it in the prompt as **authoritative** input, which noticeably improves accuracy over stripped page text. Sites without JSON-LD fall back to page text automatically; no flag needed.
+Most recipe sites embed a schema.org `Recipe` object as JSON-LD: clean, machine-readable ingredient lines. When `parse` finds one, it includes it in the prompt as **authoritative** input, which noticeably improves accuracy over stripped page text. Sites without JSON-LD fall back to page text automatically; no flag needed.
 
 ## The pipeline
 
@@ -244,7 +251,7 @@ The recipe-to-list space has three kinds of tools. The question that separates t
 | Access | Their UI only | Varies | Chat window | Pipe, files, library calls |
 | Domains | Food only | Food only | Food only | Food, BOMs, brewing, construction |
 
-Wright is infrastructure, not a product: no meal-planning UI, no grocery-cart automation, no photo parsing. What it gives you is the deterministic core those tools hide — extraction is the only probabilistic step, and everything after it is testable code you can audit, extend, and compose. If you want a pure-parser complement without any LLM, [`recipe-scrapers`](https://github.com/hhursev/recipe-scrapers) is a good companion project.
+Wright is infrastructure, not a product: no meal-planning UI, no grocery-cart automation, no photo parsing. What it gives you is the deterministic core those tools hide: extraction is the only probabilistic step, and everything after it is testable code you can audit, extend, and compose. If you want a pure-parser complement without any LLM, [`recipe-scrapers`](https://github.com/hhursev/recipe-scrapers) is a good companion project.
 
 ## FAQ
 

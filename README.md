@@ -16,11 +16,11 @@
 Pure Python library for production planning, cost calculation, shopping list
 generation, allergen detection, nutrition analysis, and supply tracking.
 
-Data-source agnostic. No I/O inside the core — models are plain Pydantic, the
+Data-source agnostic. No I/O inside the core: models are plain Pydantic, the
 `PurchasedItem` protocol accepts anything. Subclass to add your own fields.
 
 **Domains**: food recipes, construction materials, brewing grain bills,
-manufacturing BOMs — any domain where you need to aggregate named items with
+manufacturing BOMs: any domain where you need to aggregate named items with
 quantities and units into a consolidated supply list with costs.
 
 ```bash
@@ -29,17 +29,17 @@ pip install wright-core
 
 ## Use it with your AI agent
 
-Wright ships two installable agent skills — install them for Claude Code,
+Wright ships two installable agent skills. Install them for Claude Code,
 Codex, Cursor, OpenCode, and dozens of other agents:
 
 ```bash
 npx skills add 3pm-baking/wright
 ```
 
-- **`wright-recipes`** — any food & recipe task: parse recipe web pages,
+- **`wright-recipes`**: any food & recipe task. Parse recipe web pages,
   scale servings, build shopping lists, cost recipes, detect allergens,
   analyze nutrition
-- **`weekly-meal-plan`** — turn a week of recipes into one consolidated
+- **`weekly-meal-plan`**: turn a week of recipes into one consolidated
   grocery list
 
 ## From recipe web page to shopping list
@@ -71,7 +71,7 @@ automatically. See the [agents guide](https://wright.germanbakingasheville.com/g
 for the full pipeline, the comparison with other tools, and how to call it
 from an agent.
 
-> **Package layout**: one distribution, two packages — `wright` is the pure
+> **Package layout**: one distribution, two packages. `wright` is the pure
 > library (no I/O, no CLI, no LLM SDKs); `wright_recipes` is the application
 > layer (CLI, providers, fetch) and depends on wright, never the reverse.
 
@@ -182,7 +182,7 @@ for item in menu.top_drivers:
 ```
 
 [Full grocery list example](https://github.com/3pm-baking/wright/blob/9f4b0d1/examples/grocery_list.py) with 3 recipes, 16 grocery items, and formatted output.
-[Meal prep planner](https://github.com/3pm-baking/wright/blob/e25becf/examples/meal_prep.py) — 5-day week, 2 cook sessions, macros per day.
+[Meal prep planner](https://github.com/3pm-baking/wright/blob/e25becf/examples/meal_prep.py): 5-day week, 2 cook sessions, macros per day.
 
 ## Allergens and dietary badges
 
