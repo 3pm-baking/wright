@@ -28,7 +28,7 @@ uvx --with openai wright-core parse https://example.com/recipe | uvx wright-core
 
 # Two steps, with review in between
 uvx --with openai wright-core parse URL > recipe.yaml
-uvx wright-core shop recipe.yaml --servings 12 --units metric
+uvx wright-core scale recipe.yaml --servings 12 | uvx wright-core shop --units metric
 
 # Per-recipe scaling, then consolidation
 uvx --with openai wright-core parse URL_A | uvx wright-core scale --servings 24 > a.json
@@ -124,7 +124,7 @@ Then feed it to the deterministic stage:
 
 ```bash
 wright-core shop recipe.json                      # grouped list
-wright-core shop recipe.json --servings 12        # scaled
+wright-core scale recipe.json --servings 12 | wright-core shop   # scaled
 echo '<recipe-json>' | wright-core shop           # via stdin
 ```
 

@@ -23,7 +23,7 @@ uvx --with openai wright-core parse https://example.com/recipe | uvx wright-core
 # Or in two steps, with a human (or agent) in the middle
 uvx --with openai wright-core parse https://example.com/recipe > recipe.yaml
 $EDITOR recipe.yaml            # tweak names, drop items, fix quantities
-uvx wright-core shop recipe.yaml --servings 12 --units metric
+uvx wright-core scale recipe.yaml --servings 12 | uvx wright-core shop --units metric
 ```
 
 Prefer your agent to do it? Install the skills (`wright-recipes` for any food & recipe task, `weekly-meal-plan` for a week of recipes → one consolidated list):
@@ -87,7 +87,7 @@ scales the same way.
 
 ```bash
 wright-core shop recipe.yaml                       # grouped list on stderr
-wright-core shop recipe.yaml --servings 12         # scale every recipe uniformly
+wright-core scale recipe.yaml --servings 12 | wright-core shop   # scale, then plan
 wright-core shop recipe.yaml --batches 2           # make every recipe twice
 wright-core shop a.yaml b.yaml                     # consolidate multiple recipes
 wright-core shop - --format json < recipe.json     # machine-readable plan on stdout
@@ -95,7 +95,7 @@ wright-core shop - --format json < recipe.json     # machine-readable plan on st
 
 | Flag | Purpose |
 |---|---|
-| `--servings` | Scale every recipe to this many servings. |
+| `--servings` | Scale every recipe to this many servings (uniform — use `scale` for per-recipe control). |
 | `--batches` | Make every recipe this many times (`--batches 2` doubles it). Combines with `--servings`. |
 | `--units` | Display units: `us` (default, cups/tbsp) or `metric` (g/ml/kg). |
 | `--format` | `list` (default, human-readable on stderr), `json` or `yaml` (plan on stdout). |
