@@ -83,8 +83,10 @@ from wright.models import (
     RecipeComponent,
     RecipeCost,
     RecipeMacros,
+    Replacement,
     ServingRange,
     Servings,
+    Substitution,
     VolumeWeightConversions,
     categorize_item,
 )
@@ -177,8 +179,10 @@ __all__ = [
     "RecipeComponent",
     "RecipeCost",
     "RecipeMacros",
+    "Replacement",
     "ServingRange",
     "Servings",
+    "Substitution",
     "VolumeWeightConversions",
     "categorize_item",
     # Errors
