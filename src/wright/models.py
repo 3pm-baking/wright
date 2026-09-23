@@ -298,6 +298,134 @@ Servings = int | ServingRange
 """A recipe yields either an exact number of servings or a range."""
 
 
+class Replacement(BaseModel):
+    """One replacement ingredient within a :class:`Substitution`.
+
+    A substitution maps one source ingredient to one or more
+    replacements.  Each replacement's ``share`` is a fraction of the
+    matched ingredient's quantity — e.g. replacing 100 g of flour with
+    50 g gluten-free flour and 50 g almond flour is two replacements
+    with ``share=0.5`` each.
+    """
+
+    name: str = Field(..., description="Replacement ingredient name")
+    share: float = Field(
+        default=1.0,
+        gt=0,
+        description=(
+            "Fraction of the matched ingredient's quantity.  Shares must "
+            "sum to the substitution's ``total`` (1.0 by default)."
+        ),
+    )
+    unit: str | None = Field(
+        default=None,
+        description="Override the replacement's unit (default: keep the original's)",
+    )
+    require_tags: list[str] = Field(
+        default_factory=list,
+        description="Purchase-variant tags required for the new ingredient",
+    )
+
+
+class Substitution(BaseModel):
+    """A recipe transformation: replace one ingredient with one or more.
+
+    Examples:
+    - 1:1 rename — ``replacements=[Replacement(name="Almond Flour")]``
+    - Split — ``replacements=[Replacement(name="A", share=0.5),
+      Replacement(name="B", share=0.5)]``
+    - Partial keep — include the original ingredient as one of the
+      replacements (``Replacement(name="Wheat Flour", share=0.5)``)
+    - Mass-changing conversion — set ``total`` to the expected share sum
+      (e.g. fresh yeast → instant dry yeast is ``total=0.33``).
+
+    Matching is case-insensitive on exact ingredient name.  When
+    ``component`` is set, only materials inside that component are
+    matched; otherwise all components are searched.
+    """
+
+    from_name: str = Field(
+        ..., description="Ingredient name to replace (case-insensitive)"
+    )
+    replacements: list[Replacement] = Field(
+        ...,
+        min_length=1,
+        description="Replacement ingredients (one or more)",
+    )
+    component: str | None = Field(
+        default=None,
+        description="Restrict the substitution to this component (case-insensitive)",
+    )
+    total: float = Field(
+        default=1.0,
+        gt=0,
+        description=(
+            "Expected sum of replacement shares.  1.0 (default) means the "
+            "swap conserves mass — a redistribution.  Set lower for "
+            "mass-changing conversions (e.g. 0.33 for fresh → instant yeast)."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _shares_sum_to_total(self) -> Substitution:
+        """Validate that replacement shares sum to ``total``."""
+        import math
+
+        share_sum = sum(r.share for r in self.replacements)
+        if not math.isclose(share_sum, self.total, rel_tol=1e-9, abs_tol=1e-9):
+            raise ValueError(
+                f"Replacement shares for '{self.from_name}' sum to {share_sum} "
+                f"but total is {self.total} — shares must sum to total "
+                f"(1.0 = mass-conserving swap)"
+            )
+        return self
+
+
+def _coerce_substitution(
+    source: object,
+    target: object,
+    only_in: str | None,
+    total: float,
+) -> Substitution:
+    """Parse a ``swap()`` (source, target) pair into a Substitution.
+
+    Accepted target forms: a name string (1:1), a dict of
+    ``{name: share}`` (split), or a list of names (even split).
+    """
+    if isinstance(target, Replacement):
+        return Substitution(
+            from_name=source,  # ty:ignore[invalid-argument-type]
+            replacements=[target],
+            component=only_in,
+            total=total,
+        )
+    if isinstance(target, str):
+        return Substitution(
+            from_name=source,  # ty:ignore[invalid-argument-type]
+            replacements=[Replacement(name=target)],
+            component=only_in,
+            total=total,
+        )
+    if isinstance(target, dict):
+        return Substitution(
+            from_name=source,  # ty:ignore[invalid-argument-type]
+            replacements=[
+                Replacement(name=name, share=share) for name, share in target.items()
+            ],
+            component=only_in,
+            total=total,
+        )
+    if isinstance(target, list):
+        share = total / len(target)
+        return Substitution(
+            from_name=source,  # ty:ignore[invalid-argument-type]
+            replacements=[Replacement(name=name, share=share) for name in target],
+            component=only_in,
+            total=total,
+        )
+    raise ValueError(f"Unsupported swap target for {source!r}: {target!r}")
+
+
 class Assembly(BaseModel):
     """A domain-agnostic collection of components.
 
@@ -380,6 +508,173 @@ class Assembly(BaseModel):
         if not isinstance(factor, int | float):
             return NotImplemented
         return self.size_up(factor)
+
+    def substitute(
+        self,
+        subs: Substitution | list[Substitution] | dict[str, str],
+        *,
+        strict: bool = False,
+    ) -> Assembly:
+        """Return a new Assembly with ingredients replaced.
+
+        Accepts a single :class:`Substitution`, a list of them, or a
+        dict shorthand mapping ingredient names to replacement names
+        (1:1 renames).  All rules match against this assembly's current
+        state in one pass — replacement names are never re-matched by
+        later rules.  When two rules match the same ingredient, the
+        first wins.
+
+        Matching is case-insensitive on exact ingredient name.  A
+        substitution with ``component`` set only matches materials in
+        that component.  Unmatched rules pass through silently unless
+        *strict* is set.
+
+        Per-item metadata (``approx_weight_grams``,
+        ``equivalent_quantity``/``equivalent_unit``) is preserved only
+        when the replacement keeps the same name and unit — otherwise
+        it is cleared, since the equivalence describes the original
+        ingredient.
+
+        Args:
+            subs: The substitution(s) to apply.
+            strict: If ``True``, raise ``ValueError`` listing every
+                rule that matched nothing (including component context).
+
+        Returns:
+            A new Assembly — the original is untouched.  Instructions
+            and other metadata pass through unchanged.
+
+        Raises:
+            ValueError: If *strict* and any rule matched nothing.
+        """
+        if isinstance(subs, Substitution):
+            subs = [subs]
+        elif isinstance(subs, dict):
+            subs = [
+                Substitution(from_name=name, replacements=[Replacement(name=target)])
+                for name, target in subs.items()
+            ]
+        else:
+            subs = list(subs)
+
+        matched = [False] * len(subs)
+        new_components: list[Component] = []
+        for comp in self.components:
+            new_materials: list[Material] = []
+            for material in comp.materials:
+                hit: Substitution | None = None
+                for i, sub in enumerate(subs):
+                    if (
+                        sub.component is not None
+                        and sub.component.lower() != comp.name.lower()
+                    ):
+                        continue
+                    if material.name.lower() == sub.from_name.lower():
+                        hit = sub
+                        matched[i] = True
+                        break
+                if hit is None:
+                    new_materials.append(material)
+                    continue
+                for repl in hit.replacements:
+                    same_name = repl.name.lower() == material.name.lower()
+                    new_materials.append(
+                        material.model_copy(
+                            update={
+                                "name": repl.name,
+                                "quantity": material.quantity * repl.share,
+                                "unit": repl.unit or material.unit,
+                                "require_tags": list(repl.require_tags),
+                                # Equivalences and per-item weights describe the
+                                # original item — drop them on identity change.
+                                "approx_weight_grams": material.approx_weight_grams
+                                if same_name
+                                else None,
+                                "equivalent_quantity": material.equivalent_quantity
+                                if same_name and repl.unit is None
+                                else None,
+                                "equivalent_unit": material.equivalent_unit
+                                if same_name and repl.unit is None
+                                else None,
+                                "product_ref": material.product_ref
+                                if same_name
+                                else None,
+                            }
+                        )
+                    )
+            new_components.append(comp.model_copy(update={"materials": new_materials}))
+
+        if strict:
+            unmatched = [
+                f"{sub.from_name!r} (component {sub.component!r})"
+                if sub.component is not None
+                else repr(sub.from_name)
+                for sub, ok in zip(subs, matched, strict=True)
+                if not ok
+            ]
+            if unmatched:
+                raise ValueError(f"No ingredient matched: {', '.join(unmatched)}")
+
+        return self.model_copy(update={"components": new_components})
+
+    def swap(
+        self,
+        source: str | Substitution | list[Substitution] | dict[str, object],
+        target: object = None,
+        *,
+        only_in: str | None = None,
+        strict: bool = False,
+        total: float = 1.0,
+    ) -> Assembly:
+        """Baker-friendly front door for :meth:`substitute`.
+
+        Accepts the natural forms:
+
+        - ``swap("Wheat Flour", "Almond Flour")`` — 1:1 rename
+        - ``swap("Wheat Flour", {"Almond Flour": 0.5, "Cornmeal": 0.5})``
+          — split by share (shares must sum to ``total``, default 1.0)
+        - ``swap("Wheat Flour", ["Almond Flour", "Cornmeal"])`` — even split
+        - ``swap({"Wheat Flour": "Almond Flour", "Salt": "Kosher Salt"})``
+          — several 1:1 renames at once
+        - ``swap(Substitution(...))`` or a list of them — full precision
+
+        Args:
+            source: Ingredient name, substitution model(s), or a dict of
+                ``{name: replacement}`` where replacement is a name
+                (1:1), a float-share dict (split), or a name list
+                (even split).
+            target: The replacement when *source* is an ingredient name.
+            only_in: Restrict every rule to this component name.
+            strict: Raise if any rule matches nothing.
+            total: Expected share sum (1.0 = mass-conserving; lower for
+                conversions like fresh → instant yeast).
+
+        Returns:
+            A new Assembly — the original is untouched.
+        """
+        subs: list[Substitution]
+        if isinstance(source, Substitution):
+            if target is not None:
+                raise ValueError("target must be None when source is a Substitution")
+            subs = [source]
+        elif isinstance(source, list):
+            if target is not None:
+                raise ValueError("target must be None when source is a list")
+            subs = [
+                s
+                if isinstance(s, Substitution)
+                else _coerce_substitution(s, None, None, 1.0)
+                for s in source  # ty:ignore[invalid-argument-type]
+            ]
+        elif isinstance(source, dict) and target is None:
+            subs = [_coerce_substitution(k, v, None, 1.0) for k, v in source.items()]  # ty:ignore[invalid-argument-type]
+        elif isinstance(source, str):
+            if target is None:
+                raise ValueError(f"swap({source!r}) requires a target")
+            subs = [_coerce_substitution(source, target, only_in, total)]
+        else:
+            raise ValueError(f"Unsupported swap source: {source!r}")
+        return self.substitute(subs, strict=strict)
 
     def __rmul__(self, factor: float) -> Assembly:
         return self * factor
