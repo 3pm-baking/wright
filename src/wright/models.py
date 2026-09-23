@@ -141,6 +141,14 @@ class Material(BaseModel):
             "shelf life, etc.  Set from matched purchase data or manually."
         ),
     )
+    approx_weight_grams: float | None = Field(
+        default=None,
+        description=(
+            "Approximate weight in grams of one item when measured in "
+            "discrete units (e.g. 50 for one Egg, 125 for one Onion). "
+            "Overrides the unit_weights table in ConversionData."
+        ),
+    )
 
     def __repr__(self) -> str:
         tags = f" [{', '.join(self.require_tags)}]" if self.require_tags else ""
@@ -158,6 +166,7 @@ class Material(BaseModel):
             byproduct=self.byproduct,
             product_ref=self.product_ref,
             numeric_attrs=self.numeric_attrs,
+            approx_weight_grams=self.approx_weight_grams,
         )
 
     def __mul__(self, factor: float) -> Material:
@@ -189,6 +198,7 @@ class Ingredient(Material):
             byproduct=self.byproduct,
             product_ref=self.product_ref,
             numeric_attrs=self.numeric_attrs,
+            approx_weight_grams=self.approx_weight_grams,
         )
 
 
@@ -447,6 +457,87 @@ class Recipe(Assembly):
         if isinstance(v, dict):
             return ServingRange(**v)  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
         return v  # type: ignore[return-value]  # ty:ignore[invalid-return-type]
+
+    def ingredient_weights_grams(
+        self,
+        *,
+        conversion_data: ConversionData | None = None,
+        raise_on_error: bool = True,
+    ) -> list[tuple[Ingredient, float]]:
+        """Return every ingredient paired with its weight in grams.
+
+        Aggregates duplicate ingredient names across components (summing
+        grams) and excludes byproducts, mirroring shopping-list semantics.
+
+        Args:
+            conversion_data: Conversion factors (density, volume weights,
+                unit weights).  ``None`` only resolves weight/packet units.
+            raise_on_error: If ``True`` (default), raise on unresolvable
+                units.  If ``False``, unresolvable ingredients get ``0.0``.
+
+        Returns:
+            List of ``(ingredient, grams)`` sorted by grams descending.
+        """
+        from wright.weights import ingredient_grams
+
+        totals: dict[str, tuple[Ingredient, float]] = {}
+        for ing in self.all_ingredients:
+            if ing.byproduct:
+                continue
+            grams = ingredient_grams(
+                ing,
+                conversion_data=conversion_data,
+                raise_on_error=raise_on_error,
+            )
+            key = ing.name.lower()
+            if key in totals:
+                prev_ing, prev_grams = totals[key]
+                totals[key] = (prev_ing, prev_grams + grams)
+            else:
+                totals[key] = (ing, grams)
+        return sorted(totals.values(), key=lambda pair: -pair[1])
+
+    def total_weight_grams(
+        self,
+        *,
+        conversion_data: ConversionData | None = None,
+        raise_on_error: bool = True,
+    ) -> float:
+        """Return the total raw ingredient weight in grams (byproducts excluded)."""
+        return sum(
+            grams
+            for _, grams in self.ingredient_weights_grams(
+                conversion_data=conversion_data,
+                raise_on_error=raise_on_error,
+            )
+        )
+
+    def composition(
+        self,
+        *,
+        conversion_data: ConversionData | None = None,
+        raise_on_error: bool = True,
+    ) -> dict[str, float]:
+        """Return each ingredient's fraction of total raw weight.
+
+        Args:
+            conversion_data: Conversion factors (see
+                :meth:`ingredient_weights_grams`).
+            raise_on_error: If ``True`` (default), raise on unresolvable
+                units.  If ``False``, unresolvable ingredients count as 0 g.
+
+        Returns:
+            Mapping of ingredient name to its fraction of the total weight
+            (0.0-1.0), sorted by fraction descending.  Empty recipe → ``{}``.
+        """
+        pairs = self.ingredient_weights_grams(
+            conversion_data=conversion_data,
+            raise_on_error=raise_on_error,
+        )
+        total = sum(grams for _, grams in pairs)
+        if total == 0:
+            return {}
+        return {ing.name: grams / total for ing, grams in pairs}
 
     def size_up(self, factor: float) -> Recipe:
         """Return a new Recipe with all ingredient quantities scaled."""
@@ -948,17 +1039,24 @@ class VolumeWeightConversions(TypedDict, total=False):
     cup: float
 
 
-class DensityData(TypedDict, total=False):
-    """Ingredient density data for cross-dimensional unit conversion.
+class ConversionData(TypedDict, total=False):
+    """Ingredient-specific conversion factors from non-weight units to grams.
 
-    Provides two conversion strategies:
+    Provides three conversion strategies:
 
     - **liquids**: density in g/ml for fluids (e.g. ``"Honey": 1.44``).
     - **volume_weights**: direct grams-per-volume-unit for dry ingredients
       (e.g. ``"Cinnamon": {"tsp": 2.6, "tbsp": 7.8}``).
+    - **unit_weights**: grams-per-item for countable/discrete ingredients
+      (e.g. ``"Egg": 50`` for one large egg).
 
-    Both sections are optional — pass whichever your data provides.
+    All sections are optional — pass whichever your data provides.
     """
 
     liquids: dict[str, float]
     volume_weights: dict[str, VolumeWeightConversions]
+    unit_weights: dict[str, float]
+
+
+# Backward-compat alias (pre-1.0 name; ConversionData also carries unit weights)
+DensityData = ConversionData

@@ -39,6 +39,7 @@ from wright.errors import (
 from wright.loader import (
     list_recipe_files,
     load_base_recipe,
+    load_conversion_data,
     load_density_data,
     load_nutrition_registry,
     load_purchases,
@@ -66,6 +67,7 @@ from wright.models import (
     BaseRecipe,
     CategoryRule,
     Component,
+    ConversionData,
     DensityData,
     FoodRecord,
     Ingredient,
@@ -127,6 +129,7 @@ from wright.units import (
     parse_quantity,
     ureg,
 )
+from wright.weights import ingredient_grams
 
 __all__ = [
     # Version
@@ -137,6 +140,7 @@ __all__ = [
     "BaseRecipe",
     "CategoryRule",
     "Component",
+    "ConversionData",
     "DEFAULT_CATEGORY_RULES",
     "DensityData",
     "FoodRecord",
@@ -192,6 +196,7 @@ __all__ = [
     "convert_ingredient_to_grams",
     "convert_with_density",
     "get_top_cost_drivers",
+    "ingredient_grams",
     # Pricing
     "margin_price",
     "multiplier_price",
@@ -229,6 +234,7 @@ __all__ = [
     # Loader
     "list_recipe_files",
     "load_base_recipe",
+    "load_conversion_data",
     "load_density_data",
     "load_nutrition_registry",
     "load_purchases",

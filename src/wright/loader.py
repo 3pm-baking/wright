@@ -15,7 +15,7 @@ import yaml
 
 from wright.errors import PurchaseLoadError, RecipeLoadError
 from wright.models import (
-    DensityData,
+    ConversionData,
     Ingredient,
     NutritionInfo,
     Purchase,
@@ -182,23 +182,27 @@ def load_purchases(path: Path) -> list[Purchase]:
     return items
 
 
-def load_density_data(path: Path) -> DensityData:
-    """Load density conversion data from a YAML file.
+def load_conversion_data(path: Path) -> ConversionData:
+    """Load ingredient conversion data from a YAML file.
 
-    The file should have optional ``liquids`` and ``volume_weights``
-    sections.
+    The file should have optional ``liquids``, ``volume_weights``,
+    ``unit_weights``, and ``special`` sections.
 
     Args:
-        path: Path to a density YAML file.
+        path: Path to a conversion YAML file.
 
     Returns:
-        Dictionary suitable for passing to ``calculate_recipe_cost()``
-        and other costing functions.
+        Dictionary suitable for passing to ``calculate_recipe_cost()``,
+        ``ingredient_grams()``, and other conversion/costing functions.
     """
     if not path.exists():
         return {}
     with open(path) as f:
         return yaml.safe_load(f) or {}
+
+
+# Backward-compat alias (pre-1.0 name)
+load_density_data = load_conversion_data
 
 
 # ---------------------------------------------------------------------------
