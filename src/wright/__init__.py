@@ -11,6 +11,8 @@ try:
 except Exception:
     __version__ = "0.0.0"
 
+import warnings
+
 from wright.allergens import (
     DEFAULT_DAIRY_KEYS,
     DEFAULT_GLUTEN_KEYS,
@@ -40,7 +42,6 @@ from wright.loader import (
     list_recipe_files,
     load_base_recipe,
     load_conversion_data,
-    load_density_data,
     load_nutrition_registry,
     load_purchases,
     load_supplies,
@@ -68,7 +69,6 @@ from wright.models import (
     CategoryRule,
     Component,
     ConversionData,
-    DensityData,
     FoodRecord,
     Ingredient,
     IngredientCost,
@@ -130,6 +130,26 @@ from wright.units import (
     ureg,
 )
 from wright.weights import ingredient_grams
+
+_DEPRECATED = {
+    "DensityData": ("ConversionData", ConversionData),
+    "load_density_data": ("load_conversion_data", load_conversion_data),
+}
+
+
+def __getattr__(name: str) -> object:
+    """Deprecation shim for pre-rename names (see _DEPRECATED)."""
+    entry = _DEPRECATED.get(name)
+    if entry is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    replacement, value = entry
+    warnings.warn(
+        f"wright.{name} is deprecated; use wright.{replacement}",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return value
+
 
 __all__ = [
     # Version

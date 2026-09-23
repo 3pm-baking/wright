@@ -7,6 +7,7 @@ and groceries live in YAML files.
 
 from __future__ import annotations
 
+import warnings
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -201,8 +202,14 @@ def load_conversion_data(path: Path) -> ConversionData:
         return yaml.safe_load(f) or {}
 
 
-# Backward-compat alias (pre-1.0 name)
-load_density_data = load_conversion_data
+def load_density_data(path: Path) -> ConversionData:
+    """Deprecated alias for :func:`load_conversion_data`."""
+    warnings.warn(
+        "wright.load_density_data is deprecated; use wright.load_conversion_data",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return load_conversion_data(path)
 
 
 # ---------------------------------------------------------------------------

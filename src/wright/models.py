@@ -5,6 +5,7 @@ All models are data-source agnostic — no file I/O, no database assumptions.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
@@ -1058,5 +1059,17 @@ class ConversionData(TypedDict, total=False):
     unit_weights: dict[str, float]
 
 
-# Backward-compat alias (pre-1.0 name; ConversionData also carries unit weights)
-DensityData = ConversionData
+_DEPRECATED_NAMES = {"DensityData": "ConversionData"}
+
+
+def __getattr__(name: str) -> object:
+    """Deprecation shim: ``DensityData`` renamed to ``ConversionData``."""
+    replacement = _DEPRECATED_NAMES.get(name)
+    if replacement is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    warnings.warn(
+        f"wright.models.{name} is deprecated; use wright.models.{replacement}",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return globals()[replacement]

@@ -14,7 +14,7 @@ from wright.errors import (
 )
 from wright.matching import ItemMatcher, find_matching_purchases
 from wright.models import (
-    DensityData,
+    ConversionData,
     Ingredient,
     IngredientCost,
     Material,
@@ -47,7 +47,7 @@ def convert_with_density(
     quantity: float,
     from_unit: str,
     to_unit: str,
-    density_data: DensityData,
+    density_data: ConversionData,
 ) -> float | None:
     """Try to convert quantity using density data.
 
@@ -176,8 +176,8 @@ def calculate_ingredient_cost(
     material: Material,
     purchase: PurchasedItem,
     *,
-    density_data: DensityData | None = None,
-    converter: Callable[[Material, PurchasedItem, DensityData], Decimal | None]
+    density_data: ConversionData | None = None,
+    converter: Callable[[Material, PurchasedItem, ConversionData], Decimal | None]
     | None = None,
     ureg: pint.UnitRegistry | None = None,
 ) -> Decimal:
@@ -290,7 +290,7 @@ def calculate_ingredient_cost_range(
     material: Material,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
 ) -> IngredientCost:
     """Calculate the cost range for a material across multiple purchase sources.
 
@@ -358,7 +358,7 @@ def convert_ingredient_to_grams(
     *,
     raise_on_error: bool = True,
     ureg: pint.UnitRegistry | None = None,
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
 ) -> float:
     """Return the gram quantity for a material.
 
@@ -418,7 +418,7 @@ def convert_ingredient_to_grams(
 def _cost_recipe_inner(
     recipe: Recipe,
     purchases: Iterable[PurchasedItem],
-    density_data: DensityData,
+    density_data: ConversionData,
     recipe_index: Mapping[str, Recipe],
     visited: frozenset[str],
     *,
@@ -524,7 +524,7 @@ def calculate_recipe_cost(
     recipe: Recipe,
     purchases: Iterable[PurchasedItem],
     *,
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
     recipe_index: Mapping[str, Recipe] | None = None,
     matcher: ItemMatcher | None = None,
 ) -> RecipeCost:
