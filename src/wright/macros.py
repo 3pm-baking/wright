@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 from wright.costing import convert_ingredient_to_grams, convert_with_density
 from wright.models import (
-    DensityData,
+    ConversionData,
     FoodRecord,
     Ingredient,
     MacroPerServing,
@@ -44,7 +44,7 @@ def _ensure_nutrition_registry(
 
 def _ingredient_grams(
     ingredient: Ingredient,
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
 ) -> float:
     """Return gram quantity for an ingredient, or ``0.0`` if not determinable.
 
@@ -84,7 +84,7 @@ def calculate_recipe_macros(
     *,
     ingredient_nutrition_lookup: Callable[[str], NutritionInfo | None] | None = None,
     recipe_index: Mapping[str, Recipe] | None = None,
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
 ) -> RecipeMacros:
     """Calculate total and per-serving macros for a recipe.
 
@@ -191,7 +191,7 @@ def _macro_contribution(
     nutrition_registry: NutritionRegistry,
     recipe_index: Mapping[str, Recipe],
     ingredient_nutrition_lookup: Callable[[str], NutritionInfo | None] | None,
-    density_data: DensityData,
+    density_data: ConversionData,
     visited: frozenset[str],
 ) -> tuple[float, float, float, float, float]:
     """Compute (protein, carbs, fat, fiber, kcal) for one ingredient."""

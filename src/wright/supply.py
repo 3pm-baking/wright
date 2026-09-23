@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from wright.costing import convert_with_density
-from wright.models import DensityData
+from wright.models import ConversionData
 from wright.units import are_compatible, parse_quantity
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ class Stock:
         self,
         needed: Iterable[SupplyItem],
         *,
-        density_data: DensityData | None = None,
+        density_data: ConversionData | None = None,
     ) -> tuple[Stock, list[SupplyItem]]:
         """Deduct *needed* from stock where possible.
 
@@ -253,7 +253,7 @@ def _use_item(
     needed: SupplyItem,
     stock: SupplyItem,
     items_dict: dict[str, SupplyItem],
-    density_data: DensityData | None = None,
+    density_data: ConversionData | None = None,
 ) -> SupplyItem | None:
     """Deduct *needed* from *stock*, mutate *items_dict*, return deficit or None."""
     density_data = density_data or {}
