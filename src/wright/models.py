@@ -156,13 +156,22 @@ class Material(BaseModel):
         return f"Material({self.name}: {self.quantity}{self.unit}{tags})"
 
     def scale(self, factor: float) -> Material:
-        """Return a new Material with quantity scaled by the given factor."""
+        """Return a new Material with quantity scaled by the given factor.
+
+        ``equivalent_quantity`` scales with *factor*: the equivalence
+        describes the given quantity (1 box = 500 each ⇒ 3 boxes = 1500
+        each).
+        """
         return Material(
             name=self.name,
             quantity=self.quantity * factor,
             unit=self.unit,
             require_tags=self.require_tags,
-            equivalent_quantity=self.equivalent_quantity,
+            equivalent_quantity=(
+                None
+                if self.equivalent_quantity is None
+                else self.equivalent_quantity * factor
+            ),
             equivalent_unit=self.equivalent_unit,
             byproduct=self.byproduct,
             product_ref=self.product_ref,
@@ -188,13 +197,21 @@ class Ingredient(Material):
     """
 
     def scale(self, factor: float) -> Ingredient:
-        """Return a new Ingredient with quantity scaled by the given factor."""
+        """Return a new Ingredient with quantity scaled by the given factor.
+
+        ``equivalent_quantity`` scales with *factor* (see
+        :meth:`Material.scale`).
+        """
         return Ingredient(
             name=self.name,
             quantity=self.quantity * factor,
             unit=self.unit,
             require_tags=self.require_tags,
-            equivalent_quantity=self.equivalent_quantity,
+            equivalent_quantity=(
+                None
+                if self.equivalent_quantity is None
+                else self.equivalent_quantity * factor
+            ),
             equivalent_unit=self.equivalent_unit,
             byproduct=self.byproduct,
             product_ref=self.product_ref,

@@ -65,6 +65,24 @@ class TestIngredient:
         assert ing.equivalent_quantity == 8
         assert ing.equivalent_unit == "g"
 
+    def test_scale_scales_equivalent_quantity(self):
+        """Scaling scales the equivalence too: 1 onion ≡ 125 g × 4 → ≡ 500 g."""
+        ing = Ingredient(
+            name="Onion",
+            quantity=1,
+            unit="each",
+            equivalent_quantity=125,
+            equivalent_unit="g",
+        )
+        scaled = ing.scale(4)
+        assert scaled.quantity == 4
+        assert scaled.equivalent_quantity == 500
+        assert scaled.equivalent_unit == "g"
+
+    def test_scale_keeps_none_equivalent(self):
+        ing = Ingredient(name="Sugar", quantity=200, unit="g")
+        assert ing.scale(3).equivalent_quantity is None
+
     def test_byproduct(self):
         ing = Ingredient(name="Water", quantity=100, unit="ml", byproduct=True)
         assert ing.byproduct is True
