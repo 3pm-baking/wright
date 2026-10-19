@@ -9,7 +9,7 @@ import warnings
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
-from typing import Protocol, TypedDict
+from typing import Protocol, TypedDict, cast
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -409,34 +409,38 @@ def _coerce_substitution(
     Accepted target forms: a name string (1:1), a dict of
     ``{name: share}`` (split), or a list of names (even split).
     """
+    if not isinstance(source, str):
+        raise ValueError(f"swap source must be an ingredient name, got {source!r}")
     if isinstance(target, Replacement):
         return Substitution(
-            from_name=source,  # ty:ignore[invalid-argument-type]
+            from_name=source,
             replacements=[target],
             component=only_in,
             total=total,
         )
     if isinstance(target, str):
         return Substitution(
-            from_name=source,  # ty:ignore[invalid-argument-type]
+            from_name=source,
             replacements=[Replacement(name=target)],
             component=only_in,
             total=total,
         )
     if isinstance(target, dict):
+        shares = cast("dict[str, float]", target)
         return Substitution(
-            from_name=source,  # ty:ignore[invalid-argument-type]
+            from_name=source,
             replacements=[
-                Replacement(name=name, share=share) for name, share in target.items()
+                Replacement(name=name, share=share) for name, share in shares.items()
             ],
             component=only_in,
             total=total,
         )
     if isinstance(target, list):
+        names = cast("list[str]", target)
         share = total / len(target)
         return Substitution(
-            from_name=source,  # ty:ignore[invalid-argument-type]
-            replacements=[Replacement(name=name, share=share) for name in target],
+            from_name=source,
+            replacements=[Replacement(name=name, share=share) for name in names],
             component=only_in,
             total=total,
         )
@@ -681,10 +685,10 @@ class Assembly(BaseModel):
                 s
                 if isinstance(s, Substitution)
                 else _coerce_substitution(s, None, None, 1.0)
-                for s in source  # ty:ignore[invalid-argument-type]
+                for s in source
             ]
         elif isinstance(source, dict) and target is None:
-            subs = [_coerce_substitution(k, v, None, 1.0) for k, v in source.items()]  # ty:ignore[invalid-argument-type]
+            subs = [_coerce_substitution(k, v, None, 1.0) for k, v in source.items()]
         elif isinstance(source, str):
             if target is None:
                 raise ValueError(f"swap({source!r}) requires a target")
