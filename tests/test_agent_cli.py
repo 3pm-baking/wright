@@ -605,50 +605,13 @@ def test_shop_missing_aliases_file_exits_nonzero(tmp_path) -> None:
     assert result.exit_code == 1
 
 
-def test_shop_servings_deprecation_warns(tmp_path) -> None:
+def test_shop_rejects_deprecated_scaling_flags(tmp_path) -> None:
+    """shop --servings/--batches were removed: scaling belongs to 'scale'."""
     recipe_file = tmp_path / "r.json"
     recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "12"])
-    assert result.exit_code == 0, result.output
-    assert "Deprecated: shop --servings" in result.stderr
-    assert "wright-core scale" in result.stderr
-    # still functions: 2 cups at 8 servings -> 3 cups = 24 floz
-    assert "24 floz" in result.stderr or "quart" in result.stderr
-
-
-def test_shop_batches_deprecation_warns(tmp_path) -> None:
-    recipe_file = tmp_path / "r.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--batches", "2"])
-    assert result.exit_code == 0, result.output
-    assert "Deprecated: shop --batches" in result.stderr
-    assert "wright-core scale recipe.json --batches" in result.stderr
-
-
-def test_shop_no_deprecation_warning_without_scaling(tmp_path) -> None:
-    recipe_file = tmp_path / "r.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(app, ["shop", str(recipe_file)])
-    assert result.exit_code == 0, result.output
-    assert "Deprecated" not in result.stderr
-
-
-def test_downscale_warns_on_stderr(tmp_path) -> None:
-    """Scaling below native yield warns; quantities stay exact math."""
-    recipe_file = tmp_path / "r.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))  # serves 8
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "2"])
-    assert result.exit_code == 0, result.output
-    assert "scaling below the recipe's native yield" in result.stderr
-    assert "exact scaled" in result.stderr
-
-
-def test_upscale_does_not_warn(tmp_path) -> None:
-    recipe_file = tmp_path / "r.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))  # serves 8
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "16"])
-    assert result.exit_code == 0, result.output
-    assert "native yield" not in result.stderr
+    for flag in ("--servings", "--batches"):
+        result = CliRunner().invoke(app, ["shop", str(recipe_file), flag, "2"])
+        assert result.exit_code == 2, result.output
 
 
 def test_scale_downscale_warns() -> None:
@@ -806,40 +769,6 @@ def test_shop_multi_recipe_consolidates(tmp_path) -> None:
     # Flour appears once (consolidated), not twice
     flour_lines = [ln for ln in result.stderr.splitlines() if "Flour" in ln]
     assert len(flour_lines) == 1
-
-
-def test_shop_servings_scales(tmp_path) -> None:
-    recipe_file = tmp_path / "recipe.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--servings", "16"])
-    assert result.exit_code == 0, result.output
-    # 2 cups flour at 8 servings -> 4 cups (= 1 quart) at 16 servings
-    flour_lines = [ln for ln in result.stderr.splitlines() if "Flour" in ln]
-    assert len(flour_lines) == 1
-    assert "quart" in flour_lines[0] or "4" in flour_lines[0]
-
-
-def test_shop_batches_doubles(tmp_path) -> None:
-    recipe_file = tmp_path / "recipe.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(app, ["shop", str(recipe_file), "--batches", "2"])
-    assert result.exit_code == 0, result.output
-    assert "2× Test Cake" in result.stderr
-    # 2 cups flour doubled -> 4 cups (= 1 quart)
-    flour_lines = [ln for ln in result.stderr.splitlines() if "Flour" in ln]
-    assert "quart" in flour_lines[0] or "4" in flour_lines[0]
-
-
-def test_shop_batches_and_servings_combine(tmp_path) -> None:
-    recipe_file = tmp_path / "recipe.json"
-    recipe_file.write_text(json.dumps(VALID_RECIPE))
-    result = CliRunner().invoke(
-        app, ["shop", str(recipe_file), "--servings", "16", "--batches", "2"]
-    )
-    assert result.exit_code == 0, result.output
-    # 4 cups (scaled to 16 servings) x 2 batches = 8 cups = 2 quarts
-    flour_lines = [ln for ln in result.stderr.splitlines() if "Flour" in ln]
-    assert "2 quart" in flour_lines[0]
 
 
 def test_shop_json_plan_on_stdout(tmp_path) -> None:

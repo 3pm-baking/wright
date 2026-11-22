@@ -172,24 +172,18 @@ def _scale_factor(recipe: Recipe, servings: int | None) -> float:
 
 def _build_plan(
     recipes: list[Recipe],
-    servings: int | None,
     units: str,
-    batches: int = 1,
     aliases: dict[str, str] | None = None,
 ):
-    """Scale recipes and generate the consolidated shopping list."""
-    scaled = []
-    for recipe in recipes:
-        factor = _scale_factor(recipe, servings)
-        scaled.append(recipe.size_up(factor) if factor != 1.0 else recipe)
+    """Generate the consolidated shopping list (no scaling; use 'scale')."""
     session = ProductionRun(
         date=date.today(),
-        production=[ProductionItem(assembly=r.name, quantity=batches) for r in scaled],
+        production=[ProductionItem(assembly=r.name, quantity=1) for r in recipes],
         target_dates=[date.today()],
     )
     return generate_shopping_list(
         session,
-        scaled,
+        recipes,
         key_fn=partial(variant_key, aliases=aliases),
         display_normalizer=metric_display if units == "metric" else None,
     )
@@ -314,22 +308,6 @@ def shop(
             "stdin. Multiple files are consolidated into one list."
         ),
     ),
-    servings: int | None = typer.Option(
-        None,
-        "--servings",
-        help=(
-            "Deprecated: scale every recipe to this many servings. "
-            "Use 'wright-core scale' before shop instead."
-        ),
-    ),
-    batches: int = typer.Option(
-        1,
-        "--batches",
-        help=(
-            "Deprecated: make every recipe this many times. "
-            "Use 'wright-core scale --batches' before shop instead."
-        ),
-    ),
     units: str = typer.Option(
         "us",
         "--units",
@@ -361,18 +339,6 @@ def shop(
         _err("Error: no recipes provided.")
         raise typer.Exit(1)
 
-    if servings is not None:
-        _err(
-            "Deprecated: shop --servings will be removed in a future "
-            "release. Scale before shopping: "
-            "'wright-core scale recipe.json --servings N | wright-core shop'."
-        )
-    if batches != 1:
-        _err(
-            "Deprecated: shop --batches. Scale before shopping: "
-            "'wright-core scale recipe.json --batches N | wright-core shop'."
-        )
-
     custom_aliases: dict[str, str] | None = None
     if aliases:
         try:
@@ -381,7 +347,7 @@ def shop(
             _err(f"Error: {exc}")
             raise typer.Exit(1) from exc
 
-    shopping = _build_plan(recipes, servings, units, batches, custom_aliases)
+    shopping = _build_plan(recipes, units, custom_aliases)
 
     if output_format == "list":
         _print_list(shopping)

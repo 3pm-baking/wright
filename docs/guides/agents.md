@@ -105,8 +105,6 @@ wright-core shop - --format json < recipe.json     # machine-readable plan on st
 
 | Flag | Purpose |
 |---|---|
-| `--servings` | Deprecated. Scale before shopping: `scale --servings N \| shop`. |
-| `--batches` | Deprecated. Scale before shopping: `scale --batches N \| shop`. |
 | `--units` | Display units: `us` (default, cups/tbsp) or `metric` (g/ml/kg). |
 | `--format` | `list` (default, human-readable on stderr), `json` or `yaml` (plan on stdout). |
 | `--aliases` | YAML or JSON file with extra ingredient-name mappings (variant -> canonical), merged over the built-in map. |
@@ -281,7 +279,7 @@ OpenAI, Anthropic, and Gemini (via its OpenAI-compatible endpoint). You bring yo
 
 ### How do I double a recipe or scale it to more servings?
 
-Use `scale` before shopping: `scale --servings N` rescales the recipe to a serving count (a recipe serving 8, scaled to 16, doubles every quantity); `scale --batches N` makes the recipe N times as a unit of production ("cook it twice"). They combine: `scale --servings 16 --batches 2` is "the 16-serving version, made twice". `shop --servings/--batches` still work but are deprecated: scaling belongs to `scale`, consolidation to `shop`.
+Use `scale` before shopping: `scale --servings N` rescales the recipe to a serving count (a recipe serving 8, scaled to 16, doubles every quantity); `scale --batches N` makes the recipe N times as a unit of production ("cook it twice"). They combine: `scale --servings 16 --batches 2` is "the 16-serving version, made twice". Scaling belongs to `scale`, consolidation to `shop`.
 
 ### Can I use this from an agent?
 
